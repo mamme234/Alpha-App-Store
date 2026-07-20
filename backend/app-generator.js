@@ -1,13 +1,20 @@
 // ============================================
 // ALPHA APP STORE - ZIP METHOD APK GENERATOR
-// Creates APK by generating Android files and zipping them
+// NO EXTERNAL DEPENDENCIES (No uuid, No axios)
 // ============================================
 
 const fs = require('fs-extra');
 const path = require('path');
 const archiver = require('archiver');
-const { v4: uuidv4 } = require('uuid');
 const { App, User } = require('./models');
+
+// ============================================
+// GENERATE UNIQUE ID (Replaces uuid)
+// ============================================
+function generateId() {
+    return Math.random().toString(36).substring(2, 15) + 
+           Math.random().toString(36).substring(2, 15);
+}
 
 // ============================================
 // MAIN APK GENERATOR
@@ -132,7 +139,6 @@ async function generateAndroidManifest(app, appDir) {
     android:versionName="${app.version}"
     android:installLocation="auto">
 
-    <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -174,6 +180,17 @@ async function generateMainActivity(app, appDir) {
     const srcDir = path.join(appDir, 'src', packagePath);
     await fs.ensureDir(srcDir);
     
+    // Get first available deployment URL
+    const deploymentUrls = [
+        app.deployment?.vercel || '',
+        app.deployment?.render || '',
+        app.deployment?.netlify || '',
+        app.deployment?.github || '',
+        app.deployment?.custom || ''
+    ].filter(url => url && url.length > 0);
+    
+    const primaryUrl = deploymentUrls.length > 0 ? deploymentUrls[0] : 'file:///android_asset/index.html';
+    
     const mainActivity = `package ${app.packageName};
 
 import android.os.Bundle;
@@ -184,8 +201,6 @@ import android.webkit.WebChromeClient;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.app.Activity;
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Build;
 
 public class MainActivity extends Activity {
@@ -201,27 +216,7 @@ public class MainActivity extends Activity {
         progressBar = findViewById(R.id.progressBar);
         
         setupWebView();
-        
-        // Load app URL
-        String appUrl = getAppUrl();
-        webView.loadUrl(appUrl);
-    }
-    
-    private String getAppUrl() {
-        String[] urls = {
-            "${app.deployment.vercel || ''}",
-            "${app.deployment.render || ''}",
-            "${app.deployment.netlify || ''}",
-            "${app.deployment.github || ''}",
-            "${app.deployment.custom || ''}"
-        };
-        
-        for (String url : urls) {
-            if (url != null && !url.isEmpty()) {
-                return url;
-            }
-        }
-        return "file:///android_asset/index.html";
+        webView.loadUrl("${primaryUrl}");
     }
     
     private void setupWebView() {
@@ -322,7 +317,6 @@ async function generateResources(app, appDir) {
     const valuesDir = path.join(appDir, 'res', 'values');
     await fs.ensureDir(valuesDir);
     
-    // strings.xml
     const strings = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">${app.name}</string>
@@ -330,7 +324,6 @@ async function generateResources(app, appDir) {
 </resources>`;
     await fs.writeFile(path.join(valuesDir, 'strings.xml'), strings);
     
-    // colors.xml
     const colors = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#4f46e5</color>
@@ -342,7 +335,6 @@ async function generateResources(app, appDir) {
 </resources>`;
     await fs.writeFile(path.join(valuesDir, 'colors.xml'), colors);
     
-    // styles.xml
     const styles = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="AppTheme" parent="android:Theme.NoTitleBar.Fullscreen">
@@ -388,19 +380,15 @@ async function generateWebAssets(app, appDir) {
     const assetsDir = path.join(appDir, 'assets');
     await fs.ensureDir(assetsDir);
     
-    // index.html
     const html = generateHTML(app);
     await fs.writeFile(path.join(assetsDir, 'index.html'), html);
     
-    // sw.js
     const sw = generateServiceWorker(app);
     await fs.writeFile(path.join(assetsDir, 'sw.js'), sw);
     
-    // manifest.json
     const manifest = generateManifest(app);
     await fs.writeFile(path.join(assetsDir, 'manifest.json'), manifest);
     
-    // Icons
     const iconSizes = [192, 512];
     for (const size of iconSizes) {
         const svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
@@ -418,7 +406,8 @@ async function generateMetaInf(app, appDir) {
     const metaDir = path.join(appDir, 'META-INF');
     await fs.ensureDir(metaDir);
     
-    // MANIFEST.MF
+    const id = generateId();
+    
     const manifestMF = `Manifest-Version: 1.0
 Created-By: Alpha App Store
 Application: ${app.name}
@@ -426,13 +415,11 @@ Version: ${app.version}
 Package: ${app.packageName}`;
     await fs.writeFile(path.join(metaDir, 'MANIFEST.MF'), manifestMF);
     
-    // CERT.SF
     const certSF = `Signature-Version: 1.0
 Created-By: Alpha App Store
-SHA1-Digest-Manifest: ${uuidv4().replace(/-/g, '').substring(0, 40)}`;
+SHA1-Digest-Manifest: ${id.substring(0, 40)}`;
     await fs.writeFile(path.join(metaDir, 'CERT.SF'), certSF);
     
-    // CERT.RSA (placeholder)
     await fs.writeFile(path.join(metaDir, 'CERT.RSA'), '');
 }
 
@@ -440,13 +427,8 @@ SHA1-Digest-Manifest: ${uuidv4().replace(/-/g, '').substring(0, 40)}`;
 // GENERATE PLACEHOLDER FILES
 // ============================================
 async function generatePlaceholderFiles(appDir) {
-    // classes.dex (Dalvik Executable - placeholder)
     await fs.writeFile(path.join(appDir, 'classes.dex'), '');
-    
-    // resources.arsc (compiled resources - placeholder)
     await fs.writeFile(path.join(appDir, 'resources.arsc'), '');
-    
-    // lib folder
     await fs.ensureDir(path.join(appDir, 'lib'));
 }
 
@@ -454,11 +436,11 @@ async function generatePlaceholderFiles(appDir) {
 // GENERATE HTML
 // ============================================
 function generateHTML(app) {
-    const hasDeployments = app.deployment.vercel || 
-                          app.deployment.render || 
-                          app.deployment.netlify || 
-                          app.deployment.github ||
-                          app.deployment.custom;
+    const hasDeployments = app.deployment?.vercel || 
+                          app.deployment?.render || 
+                          app.deployment?.netlify || 
+                          app.deployment?.github ||
+                          app.deployment?.custom;
     
     return `<!DOCTYPE html>
 <html lang="en">
@@ -630,11 +612,11 @@ function generateHTML(app) {
             <h2>🚀 Open App Online</h2>
             <p style="margin-bottom:12px;">Click below to open this app in your browser:</p>
             <div class="deploy-links">
-                ${app.deployment.vercel ? `<a href="${app.deployment.vercel}" target="_blank" class="vercel">⚡ Vercel</a>` : ''}
-                ${app.deployment.render ? `<a href="${app.deployment.render}" target="_blank" class="render">🔄 Render</a>` : ''}
-                ${app.deployment.netlify ? `<a href="${app.deployment.netlify}" target="_blank" class="netlify">🚀 Netlify</a>` : ''}
-                ${app.deployment.github ? `<a href="${app.deployment.github}" target="_blank" class="github">🐙 GitHub</a>` : ''}
-                ${app.deployment.custom ? `<a href="${app.deployment.custom}" target="_blank" class="custom">🔗 Custom</a>` : ''}
+                ${app.deployment?.vercel ? `<a href="${app.deployment.vercel}" target="_blank" class="vercel">⚡ Vercel</a>` : ''}
+                ${app.deployment?.render ? `<a href="${app.deployment.render}" target="_blank" class="render">🔄 Render</a>` : ''}
+                ${app.deployment?.netlify ? `<a href="${app.deployment.netlify}" target="_blank" class="netlify">🚀 Netlify</a>` : ''}
+                ${app.deployment?.github ? `<a href="${app.deployment.github}" target="_blank" class="github">🐙 GitHub</a>` : ''}
+                ${app.deployment?.custom ? `<a href="${app.deployment.custom}" target="_blank" class="custom">🔗 Custom</a>` : ''}
             </div>
         </div>
         ` : ''}
