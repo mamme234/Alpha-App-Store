@@ -2,13 +2,11 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { User, App } = require('./models');
-const { generateAppAPK, generateAPKFromHTML } = require('./app-generator');
+const { generateAppAPK } = require('./app-generator');
 const fs = require('fs-extra');
 const path = require('path');
 
-// ============================================
-// AUTH MIDDLEWARE
-// ============================================
+// ===== AUTH MIDDLEWARE =====
 const protect = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
@@ -234,12 +232,11 @@ router.get('/apps/:id', async (req, res) => {
 });
 
 // ============================================
-// SUBMIT APP - WITH REAL APK GENERATION
+// SUBMIT APP - GENERATE APK
 // ============================================
 router.post('/apps/submit', protect, async (req, res) => {
     try {
         console.log('📝 App submission received');
-        console.log('📤 Data:', req.body);
         
         const {
             name, packageName, description, shortDescription,
@@ -292,13 +289,13 @@ router.post('/apps/submit', protect, async (req, res) => {
         console.log('✅ App created in database');
 
         // ============================================
-        // GENERATE REAL APK
+        // GENERATE APK USING ZIP METHOD
         // ============================================
-        console.log('🚀 Starting APK generation...');
+        console.log('🚀 Generating APK...');
         
         try {
             const result = await generateAppAPK(app._id, req.user._id);
-            console.log('✅ APK generated successfully:', result);
+            console.log('✅ APK generated successfully');
             
             res.status(201).json({
                 success: true,
@@ -307,17 +304,15 @@ router.post('/apps/submit', protect, async (req, res) => {
                     app: app,
                     apkUrl: result.apkUrl,
                     downloadUrl: result.downloadUrl,
-                    apkPath: result.apkPath
+                    apkPath: result.apkPath,
+                    fileSize: result.fileSize
                 }
             });
         } catch (genError) {
             console.error('❌ APK generation failed:', genError);
-            
-            // Update app status
             app.status = 'pending';
             await app.save();
             
-            // Still return success but with warning
             res.status(201).json({
                 success: true,
                 message: 'App submitted but APK generation failed. Please try again.',
@@ -336,7 +331,7 @@ router.post('/apps/submit', protect, async (req, res) => {
 });
 
 // ============================================
-// DOWNLOAD APK
+// DOWNLOAD APK - FIXED
 // ============================================
 router.get('/apps/download/:id', async (req, res) => {
     try {
@@ -362,61 +357,19 @@ router.get('/apps/download/:id', async (req, res) => {
         app.downloads += 1;
         await app.save();
 
-        // Send file
-        res.download(apkPath, `${app.packageName}.apk`, (err) => {
-            if (err) {
-                console.error('Download error:', err);
-                res.status(500).json({
-                    success: false,
-                    message: 'Failed to download file'
-                });
-            }
-        });
+        // Send file for download
+        res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+        res.setHeader('Content-Disposition', `attachment; filename="${app.packageName}.apk"`);
+        res.setHeader('Content-Length', fs.statSync(apkPath).size);
+        
+        const fileStream = fs.createReadStream(apkPath);
+        fileStream.pipe(res);
 
     } catch (error) {
         console.error('Download error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to download app'
-        });
-    }
-});
-
-// ============================================
-// REGENERATE APK
-// ============================================
-router.post('/apps/regenerate/:id', protect, async (req, res) => {
-    try {
-        const app = await App.findById(req.params.id);
-        if (!app) {
-            return res.status(404).json({
-                success: false,
-                message: 'App not found'
-            });
-        }
-
-        // Check ownership
-        if (app.developer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            return res.status(403).json({
-                success: false,
-                message: 'Not authorized to regenerate this app'
-            });
-        }
-
-        // Generate APK
-        const result = await generateAppAPK(app._id, req.user._id);
-
-        res.status(200).json({
-            success: true,
-            message: 'APK regenerated successfully',
-            data: result
-        });
-
-    } catch (error) {
-        console.error('Regenerate error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to regenerate APK: ' + error.message
+            message: 'Failed to download app: ' + error.message
         });
     }
 });
