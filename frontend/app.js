@@ -1,26 +1,20 @@
 // ============================================
 // ALPHA APP STORE - COMPLETE JAVASCRIPT
+// FIXED FOR: Frontend (Vercel) + Backend (Render)
 // ============================================
 
 // ===== CONFIGURATION =====
 const CONFIG = {
-    // Render Deployment URL - Replace with your actual Render URL
+    // === RENDER BACKEND URL ===
     RENDER_URL: 'https://alpha-app-store.onrender.com',
     
-    // API URL - Use Render URL in production, localhost in development
-    API_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:5000/api'
-        : 'https://alpha-app-store.onrender.com/api',
+    // === API URL - ALWAYS USE RENDER BACKEND ===
+    API_URL: 'https://alpha-app-store.onrender.com/api',
     
-    // Frontend URL
-    FRONTEND_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:3000'
-        : 'https://alpha-app-store.onrender.com',
+    // === FRONTEND URL (Vercel) ===
+    FRONTEND_URL: 'https://alpha-app-store.vercel.app',
     
-    // App Name
     APP_NAME: 'Alpha App Store',
-    
-    // Version
     VERSION: '1.0.0'
 };
 
@@ -30,78 +24,108 @@ const CONFIG = {
 const API_URL = CONFIG.API_URL;
 
 console.log(`🚀 ${CONFIG.APP_NAME} v${CONFIG.VERSION}`);
-console.log(`📍 API URL: ${API_URL}`);
+console.log(`📍 Backend API: ${API_URL}`);
 console.log(`📍 Frontend URL: ${CONFIG.FRONTEND_URL}`);
 
 const api = {
     get: async (endpoint, token = null) => {
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
         if (token) headers['Authorization'] = `Bearer ${token}`;
+        
         try {
-            const res = await fetch(`${API_URL}${endpoint}`, { headers });
+            const res = await fetch(`${API_URL}${endpoint}`, { 
+                headers,
+                credentials: 'include'
+            });
             if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
             }
             return res.json();
         } catch (error) {
             console.error('API GET Error:', error);
-            showNotification('Failed to connect to server', 'error');
+            showNotification('Failed to connect to server: ' + error.message, 'error');
             throw error;
         }
     },
+    
     post: async (endpoint, data, token = null) => {
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
         if (token) headers['Authorization'] = `Bearer ${token}`;
+        
         try {
             const res = await fetch(`${API_URL}${endpoint}`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
+                credentials: 'include'
             });
+            
+            const result = await res.json();
             if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
+                throw new Error(result.message || `HTTP error! status: ${res.status}`);
             }
-            return res.json();
+            return result;
         } catch (error) {
             console.error('API POST Error:', error);
-            showNotification('Failed to connect to server', 'error');
+            showNotification('❌ ' + error.message, 'error');
             throw error;
         }
     },
+    
     put: async (endpoint, data, token = null) => {
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
         if (token) headers['Authorization'] = `Bearer ${token}`;
+        
         try {
             const res = await fetch(`${API_URL}${endpoint}`, {
                 method: 'PUT',
                 headers,
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
+                credentials: 'include'
             });
             if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
             }
             return res.json();
         } catch (error) {
             console.error('API PUT Error:', error);
-            showNotification('Failed to connect to server', 'error');
+            showNotification('Failed to update: ' + error.message, 'error');
             throw error;
         }
     },
+    
     delete: async (endpoint, token = null) => {
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
         if (token) headers['Authorization'] = `Bearer ${token}`;
+        
         try {
             const res = await fetch(`${API_URL}${endpoint}`, {
                 method: 'DELETE',
-                headers
+                headers,
+                credentials: 'include'
             });
             if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
             }
             return res.json();
         } catch (error) {
             console.error('API DELETE Error:', error);
-            showNotification('Failed to connect to server', 'error');
+            showNotification('Failed to delete: ' + error.message, 'error');
             throw error;
         }
     }
@@ -114,52 +138,75 @@ let currentUser = null;
 let authToken = localStorage.getItem('token');
 
 // ============================================
-// AUTH FUNCTIONS
+// AUTH FUNCTIONS - FIXED
 // ============================================
 const Auth = {
     getUser: () => currentUser,
     getToken: () => authToken,
     isLoggedIn: () => !!authToken,
 
-    login: async (email, password) => {
+    // === REGISTER - FIXED ===
+    register: async (username, email, password) => {
         try {
-            const result = await api.post('/auth/login', { email, password });
+            console.log('📝 Attempting registration...');
+            console.log('📤 Data:', { username, email, password: '***' });
+            
+            const result = await api.post('/auth/register', { 
+                username, 
+                email, 
+                password 
+            });
+            
+            console.log('📥 Registration response:', result);
+            
             if (result.success) {
                 currentUser = result.data.user;
                 authToken = result.data.token;
                 localStorage.setItem('token', authToken);
                 localStorage.setItem('user', JSON.stringify(currentUser));
-                showNotification('✅ Login successful!', 'success');
+                showNotification('✅ Registration successful! Welcome ' + username + '!', 'success');
                 updateUI();
                 navigateTo('home');
-                return { success: true };
+                return { success: true, data: result.data };
+            } else {
+                showNotification(result.message || 'Registration failed', 'error');
+                return { success: false, message: result.message };
             }
-            showNotification(result.message || 'Login failed', 'error');
-            return { success: false };
         } catch (error) {
-            showNotification('Login failed', 'error');
-            return { success: false };
+            console.error('❌ Registration error:', error);
+            const errorMsg = error.message || 'Registration failed. Please try again.';
+            showNotification('❌ ' + errorMsg, 'error');
+            return { success: false, message: errorMsg };
         }
     },
 
-    register: async (username, email, password) => {
+    // === LOGIN - FIXED ===
+    login: async (email, password) => {
         try {
-            const result = await api.post('/auth/register', { username, email, password });
+            console.log('🔐 Attempting login...');
+            
+            const result = await api.post('/auth/login', { email, password });
+            
+            console.log('📥 Login response:', result);
+            
             if (result.success) {
                 currentUser = result.data.user;
                 authToken = result.data.token;
                 localStorage.setItem('token', authToken);
                 localStorage.setItem('user', JSON.stringify(currentUser));
-                showNotification('✅ Registration successful!', 'success');
+                showNotification('✅ Login successful! Welcome back ' + currentUser.username + '!', 'success');
                 updateUI();
                 navigateTo('home');
-                return { success: true };
+                return { success: true, data: result.data };
+            } else {
+                showNotification(result.message || 'Login failed', 'error');
+                return { success: false, message: result.message };
             }
-            showNotification(result.message || 'Registration failed', 'error');
-            return { success: false };
         } catch (error) {
-            showNotification('Registration failed', 'error');
-            return { success: false };
+            console.error('❌ Login error:', error);
+            const errorMsg = error.message || 'Login failed. Please try again.';
+            showNotification('❌ ' + errorMsg, 'error');
+            return { success: false, message: errorMsg };
         }
     },
 
@@ -168,44 +215,71 @@ const Auth = {
         authToken = null;
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        showNotification('Logged out', 'info');
+        showNotification('👋 Logged out successfully', 'info');
         updateUI();
         navigateTo('home');
     },
 
     loadUser: async () => {
-        if (!authToken) return;
+        if (!authToken) {
+            console.log('No token found, user not logged in');
+            return;
+        }
+        
         try {
+            console.log('👤 Loading user...');
             const result = await api.get('/auth/me', authToken);
             if (result.success) {
                 currentUser = result.data.user;
                 localStorage.setItem('user', JSON.stringify(currentUser));
-            }
-        } catch (error) {
-            console.error('Failed to load user:', error);
-            // If token is invalid, clear it
-            if (error.message.includes('401')) {
+                console.log('✅ User loaded:', currentUser.username);
+            } else {
+                // Token invalid
+                console.log('⚠️ Token invalid, clearing...');
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 authToken = null;
             }
+        } catch (error) {
+            console.error('❌ Failed to load user:', error);
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            authToken = null;
         }
         updateUI();
     },
 
-    // Check server health
+    // === CHECK SERVER HEALTH ===
     checkHealth: async () => {
         try {
-            const res = await fetch(`${CONFIG.RENDER_URL}/health`);
+            console.log('🏥 Checking server health...');
+            const res = await fetch(`${CONFIG.RENDER_URL}/health`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
             if (res.ok) {
                 const data = await res.json();
                 console.log('✅ Server is healthy:', data);
+                showNotification('✅ Server connected successfully!', 'success');
                 return true;
             }
             console.log('⚠️ Server health check failed');
             return false;
         } catch (error) {
             console.error('❌ Server health check error:', error);
+            showNotification('⚠️ Cannot connect to server. Please check your connection.', 'error');
+            return false;
+        }
+    },
+
+    // === TEST API CONNECTION ===
+    testConnection: async () => {
+        try {
+            const result = await api.get('/apps');
+            console.log('✅ API Connection test successful:', result);
+            return true;
+        } catch (error) {
+            console.error('❌ API Connection test failed:', error);
             return false;
         }
     }
@@ -251,7 +325,6 @@ function navigateTo(page, params = null) {
     const mainContent = document.getElementById('mainContent');
     if (!mainContent) return;
     
-    // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
     switch(page) {
@@ -289,7 +362,6 @@ function navigateTo(page, params = null) {
 // ============================================
 function renderHome(container) {
     container.innerHTML = `
-        <!-- Hero -->
         <section class="hero">
             <div class="container">
                 <h1>📱 Discover Amazing Apps</h1>
@@ -315,7 +387,6 @@ function renderHome(container) {
             </div>
         </section>
 
-        <!-- Categories -->
         <section>
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-th-large"></i> Categories</h2>
@@ -326,7 +397,6 @@ function renderHome(container) {
             </div>
         </section>
 
-        <!-- Featured Apps -->
         <section>
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-star"></i> Featured Apps</h2>
@@ -337,7 +407,6 @@ function renderHome(container) {
             </div>
         </section>
 
-        <!-- Trending Apps -->
         <section>
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-fire"></i> Trending Now</h2>
@@ -348,7 +417,6 @@ function renderHome(container) {
             </div>
         </section>
 
-        <!-- Submit Banner -->
         <section class="submit-banner">
             <div class="submit-content">
                 <h2>🚀 Submit Your App</h2>
@@ -652,7 +720,7 @@ function renderSearch(container, query) {
 }
 
 // ============================================
-// RENDER LOGIN
+// RENDER LOGIN - FIXED
 // ============================================
 function renderLogin(container) {
     if (Auth.isLoggedIn()) {
@@ -663,7 +731,7 @@ function renderLogin(container) {
     container.innerHTML = `
         <div class="auth-form">
             <h2>👋 Welcome Back</h2>
-            <form onsubmit="handleLogin(event)">
+            <form id="loginForm" onsubmit="handleLogin(event)">
                 <div class="form-group">
                     <label><i class="fas fa-envelope"></i> Email</label>
                     <input type="email" id="loginEmail" required placeholder="your@email.com">
@@ -682,7 +750,7 @@ function renderLogin(container) {
 }
 
 // ============================================
-// RENDER REGISTER
+// RENDER REGISTER - FIXED
 // ============================================
 function renderRegister(container) {
     if (Auth.isLoggedIn()) {
@@ -693,10 +761,10 @@ function renderRegister(container) {
     container.innerHTML = `
         <div class="auth-form">
             <h2>📝 Create Account</h2>
-            <form onsubmit="handleRegister(event)">
+            <form id="registerForm" onsubmit="handleRegister(event)">
                 <div class="form-group">
                     <label><i class="fas fa-user"></i> Username</label>
-                    <input type="text" id="regUsername" required placeholder="username">
+                    <input type="text" id="regUsername" required placeholder="username" minlength="3">
                 </div>
                 <div class="form-group">
                     <label><i class="fas fa-envelope"></i> Email</label>
@@ -705,6 +773,7 @@ function renderRegister(container) {
                 <div class="form-group">
                     <label><i class="fas fa-lock"></i> Password</label>
                     <input type="password" id="regPassword" required placeholder="••••••••" minlength="6">
+                    <small style="color:#6b7280;font-size:12px;">Must be at least 6 characters</small>
                 </div>
                 <button type="submit" class="btn-submit"><i class="fas fa-user-plus"></i> Sign Up</button>
             </form>
@@ -796,21 +865,66 @@ function renderSubmit(container) {
 }
 
 // ============================================
-// HANDLERS
+// HANDLERS - FIXED
 // ============================================
 async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
-    await Auth.login(email, password);
+    
+    if (!email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+    }
+    
+    const result = await Auth.login(email, password);
+    if (result.success) {
+        // Login successful - handled in Auth.login
+    }
 }
 
 async function handleRegister(e) {
     e.preventDefault();
-    const username = document.getElementById('regUsername').value;
-    const email = document.getElementById('regEmail').value;
+    
+    const username = document.getElementById('regUsername').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
     const password = document.getElementById('regPassword').value;
-    await Auth.register(username, email, password);
+    
+    // Validation
+    if (!username || !email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+    }
+    
+    if (username.length < 3) {
+        showNotification('Username must be at least 3 characters', 'error');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showNotification('Password must be at least 6 characters', 'error');
+        return;
+    }
+    
+    if (!email.includes('@')) {
+        showNotification('Please enter a valid email address', 'error');
+        return;
+    }
+    
+    // Show loading
+    const btn = e.target.querySelector('.btn-submit');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
+    btn.disabled = true;
+    
+    const result = await Auth.register(username, email, password);
+    
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    
+    if (result.success) {
+        // Registration successful - handled in Auth.register
+    }
 }
 
 async function handleSubmitApp(e) {
@@ -877,21 +991,33 @@ function showNotification(message, type = 'info') {
     div.textContent = message;
     document.body.appendChild(div);
     
-    setTimeout(() => div.remove(), 3500);
+    setTimeout(() => div.remove(), 4000);
 }
 
 // ============================================
-// INIT
+// INIT - FIXED
 // ============================================
-document.addEventListener('DOMContentLoaded', () => {
-    // Check server health
-    Auth.checkHealth().then(isHealthy => {
-        if (!isHealthy) {
-            showNotification('⚠️ Server is starting up. Please wait a moment.', 'warning');
-        }
-    });
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log(`🚀 ${CONFIG.APP_NAME} v${CONFIG.VERSION}`);
+    console.log(`📍 Backend API: ${API_URL}`);
+    console.log(`📍 Frontend URL: ${CONFIG.FRONTEND_URL}`);
     
-    Auth.loadUser();
+    // Check server health
+    const isHealthy = await Auth.checkHealth();
+    if (!isHealthy) {
+        showNotification('⚠️ Server is starting up. Please wait a moment.', 'warning');
+    } else {
+        // Test API connection
+        const isConnected = await Auth.testConnection();
+        if (isConnected) {
+            console.log('✅ API connection successful!');
+        }
+    }
+    
+    // Load user
+    await Auth.loadUser();
+    
+    // Navigate to home
     navigateTo('home');
     
     // Search
@@ -911,6 +1037,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    console.log(`✅ ${CONFIG.APP_NAME} v${CONFIG.VERSION} loaded successfully!`);
-    console.log(`🔗 Deployed at: ${CONFIG.RENDER_URL}`);
+    console.log('✅ App initialized successfully!');
 });
