@@ -63,7 +63,7 @@ body {
     transition: background 0.3s;
 }
 .nav-search button:hover { background: #4338ca; }
-.nav-links { display: flex; align-items: center; gap: 20px; }
+.nav-links { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .nav-links a {
     text-decoration: none;
     color: #4b5563;
@@ -152,18 +152,20 @@ body {
     padding: 6px 14px;
     border: none;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 13px;
     cursor: pointer;
     transition: all 0.3s;
 }
 .app-card .app-actions .btn-download {
     background: #4f46e5;
     color: white;
+    flex: 1;
 }
 .app-card .app-actions .btn-download:hover { background: #4338ca; }
 .app-card .app-actions .btn-fav {
     background: #f3f4f6;
     color: #6b7280;
+    padding: 6px 14px;
 }
 .app-card .app-actions .btn-fav.active { color: #ef4444; }
 .app-card .app-actions .btn-fav:hover { background: #e5e7eb; }
@@ -173,15 +175,8 @@ body {
     font-size: 24px;
     font-weight: 700;
     margin: 30px 0 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.section-title .see-all {
-    font-size: 14px;
-    font-weight: 400;
-    color: #4f46e5;
-    text-decoration: none;
+    padding-bottom: 8px;
+    border-bottom: 3px solid #4f46e5;
 }
 
 /* ===== APP DETAIL ===== */
@@ -241,14 +236,25 @@ body {
     gap: 8px;
 }
 .app-detail .features ul li::before {
-    content: '✓ ';
-    color: #4f46e5;
-    font-weight: 700;
+    content: '✅ ';
+    color: #22c55e;
 }
+.app-detail .deploy-link {
+    padding: 10px 24px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: white;
+    font-weight: 500;
+    display: inline-block;
+}
+.app-detail .deploy-link.vercel { background: #000; }
+.app-detail .deploy-link.render { background: #46d0b0; color: #000; }
+.app-detail .deploy-link.netlify { background: #00c7b7; color: #000; }
+.app-detail .deploy-link.github { background: #333; }
 
 /* ===== FORMS ===== */
 .auth-form {
-    max-width: 400px;
+    max-width: 500px;
     margin: 40px auto;
     background: white;
     padding: 40px;
@@ -258,18 +264,20 @@ body {
 .auth-form h2 { text-align: center; margin-bottom: 24px; }
 .auth-form .form-group { margin-bottom: 16px; }
 .auth-form label { display: block; font-weight: 500; margin-bottom: 4px; font-size: 14px; }
-.auth-form input {
+.auth-form input, .auth-form select, .auth-form textarea {
     width: 100%;
     padding: 10px 14px;
     border: 2px solid #e5e7eb;
     border-radius: 10px;
     font-size: 14px;
     transition: border-color 0.3s;
+    font-family: inherit;
 }
-.auth-form input:focus {
+.auth-form input:focus, .auth-form select:focus, .auth-form textarea:focus {
     outline: none;
     border-color: #4f46e5;
 }
+.auth-form textarea { resize: vertical; min-height: 80px; }
 .auth-form .btn-submit {
     width: 100%;
     padding: 12px;
@@ -284,7 +292,7 @@ body {
 }
 .auth-form .btn-submit:hover { background: #4338ca; }
 .auth-form .auth-link { text-align: center; margin-top: 16px; }
-.auth-form .auth-link a { color: #4f46e5; text-decoration: none; }
+.auth-form .auth-link a { color: #4f46e5; text-decoration: none; cursor: pointer; }
 
 /* ===== NOTIFICATION ===== */
 .notification {
@@ -296,6 +304,8 @@ body {
     color: white;
     z-index: 9999;
     animation: slideIn 0.3s ease;
+    max-width: 400px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 .notification.success { background: #22c55e; }
 .notification.error { background: #ef4444; }
@@ -313,7 +323,7 @@ body {
     margin-top: auto;
     text-align: center;
 }
-.footer-links { display: flex; justify-content: center; gap: 20px; margin-top: 10px; }
+.footer-links { display: flex; justify-content: center; gap: 20px; margin-top: 10px; flex-wrap: wrap; }
 .footer-links a { color: #9ca3af; text-decoration: none; font-size: 14px; }
 .footer-links a:hover { color: white; }
 
@@ -322,7 +332,15 @@ body {
     .navbar .container { flex-direction: column; align-items: stretch; }
     .nav-search { max-width: 100%; }
     .nav-links { justify-content: center; }
-    .hero h1 { font-size: 32px; }
+    .hero h1 { font-size: 28px; }
     .app-detail .header { flex-direction: column; align-items: center; text-align: center; }
     .app-detail .features ul { grid-template-columns: 1fr; }
-  }
+    .app-detail .info .meta { justify-content: center; }
+    .auth-form { padding: 24px; margin: 20px; }
+}
+
+@media (max-width: 480px) {
+    .hero { padding: 30px 20px; }
+    .hero h1 { font-size: 24px; }
+    .app-grid { grid-template-columns: 1fr; }
+}
