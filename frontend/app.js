@@ -7,7 +7,7 @@
 // CONFIGURATION
 // ============================================
 const CONFIG = {
-    // Backend API URL (Your Render URL - FIXED)
+    // Backend API URL (Your Render URL)
     API_URL: 'https://alpha-app-store.onrender.com/api',
     
     // Frontend URL (Your Vercel URL)
@@ -23,7 +23,7 @@ console.log(`📍 Backend API: ${CONFIG.API_URL}`);
 console.log(`📍 Frontend URL: ${CONFIG.FRONTEND_URL}`);
 
 // ============================================
-// API CLIENT (IMPROVED)
+// API CLIENT
 // ============================================
 const api = {
     get: async (endpoint, token = null) => {
@@ -245,33 +245,27 @@ const Auth = {
     checkHealth: async () => {
         try {
             console.log('🏥 Checking server health...');
-            // Use the main domain, not /api
+            // Use the main domain for health check (not /api)
             const baseUrl = CONFIG.API_URL.replace('/api', '');
-            const res = await fetch(`${baseUrl}/health`, {
+            const healthUrl = `${baseUrl}/health`;
+            console.log(`📡 Health check: ${healthUrl}`);
+            
+            const res = await fetch(healthUrl, {
                 method: 'GET',
-                headers: { 'Accept': 'application/json' }
+                headers: { 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
             });
             
             if (res.ok) {
                 const data = await res.json();
                 console.log('✅ Server is healthy:', data);
                 return true;
+            } else {
+                console.log(`⚠️ Health check returned status: ${res.status}`);
+                return false;
             }
-            
-            // If health check fails, try root endpoint
-            console.log('⚠️ Health check failed, trying root...');
-            const rootRes = await fetch(baseUrl, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json' }
-            });
-            
-            if (rootRes.ok) {
-                console.log('✅ Server root is accessible');
-                return true;
-            }
-            
-            console.log('⚠️ Server is not responding');
-            return false;
         } catch (error) {
             console.error('❌ Server health check error:', error);
             return false;
@@ -352,13 +346,19 @@ function navigateTo(page, params = null) {
 }
 
 // ============================================
-// RENDER HOME (UPDATED TO CHECK API)
+// RENDER HOME
 // ============================================
 async function renderHome(container) {
     // Check API health first
     const isHealthy = await Auth.checkHealth();
     if (!isHealthy) {
         showNotification('⚠️ Server is starting up. Please wait a moment.', 'warning');
+    } else {
+        // Remove any existing warning
+        const notification = document.querySelector('.notification');
+        if (notification && notification.textContent.includes('Server is starting up')) {
+            notification.remove();
+        }
     }
     
     container.innerHTML = `
@@ -1049,6 +1049,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         showNotification('⚠️ Server is starting up. Please wait a moment.', 'warning');
     } else {
         console.log('✅ Server connection established');
+        // Remove the warning notification if it exists
+        const notification = document.querySelector('.notification');
+        if (notification && notification.textContent.includes('Server is starting up')) {
+            notification.remove();
+        }
     }
     
     // Load user
