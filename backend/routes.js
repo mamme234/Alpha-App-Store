@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-
-// Import models
 const { User, App } = require('./models');
+const { generateAppAPK, generateAPKFromHTML } = require('./app-generator');
+const fs = require('fs-extra');
+const path = require('path');
 
 // ============================================
 // AUTH MIDDLEWARE
@@ -33,41 +33,27 @@ const generateToken = (userId) => {
 };
 
 // ============================================
-// REGISTER - FIXED WITH DEBUGGING
+// AUTH ROUTES
 // ============================================
 router.post('/auth/register', async (req, res) => {
     try {
-        console.log('📝 Registration request received');
-        console.log('📤 Request body:', { 
-            ...req.body, 
-            password: req.body.password ? '***' : 'undefined' 
-        });
-
         const { username, email, password, role } = req.body;
 
-        // Validation
         if (!username || !email || !password) {
-            console.log('❌ Missing fields');
             return res.status(400).json({
                 success: false,
                 message: 'Please provide username, email and password'
             });
         }
 
-        // Check if user exists
-        const existing = await User.findOne({ 
-            $or: [{ email }, { username }] 
-        });
-
+        const existing = await User.findOne({ $or: [{ email }, { username }] });
         if (existing) {
-            console.log('❌ User already exists:', existing.email);
             return res.status(400).json({
                 success: false,
-                message: 'User already exists with this email or username'
+                message: 'User already exists'
             });
         }
 
-        // Create user
         const user = new User({
             username,
             email,
@@ -76,11 +62,8 @@ router.post('/auth/register', async (req, res) => {
         });
 
         await user.save();
-        console.log('✅ User created:', user._id);
 
-        // Generate token
         const token = generateToken(user._id);
-        console.log('✅ Token generated for user:', username);
 
         res.status(201).json({
             success: true,
@@ -97,7 +80,7 @@ router.post('/auth/register', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Registration error:', error);
+        console.error('Registration error:', error);
         res.status(500).json({
             success: false,
             message: 'Registration failed: ' + error.message
@@ -105,12 +88,8 @@ router.post('/auth/register', async (req, res) => {
     }
 });
 
-// ============================================
-// LOGIN
-// ============================================
 router.post('/auth/login', async (req, res) => {
     try {
-        console.log('🔐 Login request received');
         const { email, password } = req.body;
 
         if (!email || !password) {
@@ -122,7 +101,6 @@ router.post('/auth/login', async (req, res) => {
 
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
-            console.log('❌ User not found:', email);
             return res.status(401).json({
                 success: false,
                 message: 'Invalid credentials'
@@ -131,7 +109,6 @@ router.post('/auth/login', async (req, res) => {
 
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
-            console.log('❌ Password mismatch for:', email);
             return res.status(401).json({
                 success: false,
                 message: 'Invalid credentials'
@@ -139,7 +116,6 @@ router.post('/auth/login', async (req, res) => {
         }
 
         const token = generateToken(user._id);
-        console.log('✅ Login successful for:', email);
 
         res.status(200).json({
             success: true,
@@ -156,7 +132,7 @@ router.post('/auth/login', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Login error:', error);
+        console.error('Login error:', error);
         res.status(500).json({
             success: false,
             message: 'Login failed: ' + error.message
@@ -164,9 +140,6 @@ router.post('/auth/login', async (req, res) => {
     }
 });
 
-// ============================================
-// GET ME
-// ============================================
 router.get('/auth/me', protect, async (req, res) => {
     try {
         res.status(200).json({
@@ -174,7 +147,7 @@ router.get('/auth/me', protect, async (req, res) => {
             data: { user: req.user }
         });
     } catch (error) {
-        console.error('❌ Get me error:', error);
+        console.error('Get me error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to get user data'
@@ -183,7 +156,7 @@ router.get('/auth/me', protect, async (req, res) => {
 });
 
 // ============================================
-// APPS ROUTES
+// APP ROUTES
 // ============================================
 router.get('/apps', async (req, res) => {
     try {
@@ -198,7 +171,7 @@ router.get('/apps', async (req, res) => {
             data: apps
         });
     } catch (error) {
-        console.error('❌ Get apps error:', error);
+        console.error('Get apps error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to fetch apps'
@@ -214,7 +187,7 @@ router.get('/apps/featured', async (req, res) => {
             data: apps
         });
     } catch (error) {
-        console.error('❌ Get featured error:', error);
+        console.error('Get featured error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to fetch featured apps'
@@ -230,7 +203,7 @@ router.get('/apps/trending', async (req, res) => {
             data: apps
         });
     } catch (error) {
-        console.error('❌ Get trending error:', error);
+        console.error('Get trending error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to fetch trending apps'
@@ -252,7 +225,7 @@ router.get('/apps/:id', async (req, res) => {
             data: app
         });
     } catch (error) {
-        console.error('❌ Get app error:', error);
+        console.error('Get app error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to fetch app'
@@ -260,24 +233,101 @@ router.get('/apps/:id', async (req, res) => {
     }
 });
 
+// ============================================
+// SUBMIT APP - WITH REAL APK GENERATION
+// ============================================
 router.post('/apps/submit', protect, async (req, res) => {
     try {
-        const appData = {
-            ...req.body,
+        console.log('📝 App submission received');
+        console.log('📤 Data:', req.body);
+        
+        const {
+            name, packageName, description, shortDescription,
+            category, version, fileSize, fileSizeBytes,
+            minAndroidVersion, deployment, features, permissions
+        } = req.body;
+
+        // Validate
+        if (!name || !packageName || !category) {
+            return res.status(400).json({
+                success: false,
+                message: 'Name, package name and category are required'
+            });
+        }
+
+        // Check if app exists
+        const existing = await App.findOne({ packageName });
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                message: 'App already exists with this package name'
+            });
+        }
+
+        // Create app
+        const app = new App({
+            name,
+            packageName,
+            description: description || 'No description available',
+            shortDescription: shortDescription || name,
+            category,
+            version: version || '1.0.0',
+            fileSize: fileSize || '5MB',
+            fileSizeBytes: fileSizeBytes || 5242880,
+            minAndroidVersion: minAndroidVersion || '5.0',
             developer: req.user._id,
-            status: 'approved'
-        };
-        
-        const app = new App(appData);
-        await app.save();
-        
-        res.status(201).json({
-            success: true,
-            message: 'App submitted successfully',
-            data: app
+            deployment: {
+                vercel: deployment?.vercel || '',
+                render: deployment?.render || '',
+                netlify: deployment?.netlify || '',
+                github: deployment?.github || '',
+                custom: deployment?.custom || ''
+            },
+            features: features || ['Fast loading', 'User friendly', 'Secure'],
+            permissions: permissions || ['Internet', 'Storage'],
+            status: 'generating'
         });
+
+        await app.save();
+        console.log('✅ App created in database');
+
+        // ============================================
+        // GENERATE REAL APK
+        // ============================================
+        console.log('🚀 Starting APK generation...');
+        
+        try {
+            const result = await generateAppAPK(app._id, req.user._id);
+            console.log('✅ APK generated successfully:', result);
+            
+            res.status(201).json({
+                success: true,
+                message: 'App submitted and APK generated successfully!',
+                data: {
+                    app: app,
+                    apkUrl: result.apkUrl,
+                    downloadUrl: result.downloadUrl,
+                    apkPath: result.apkPath
+                }
+            });
+        } catch (genError) {
+            console.error('❌ APK generation failed:', genError);
+            
+            // Update app status
+            app.status = 'pending';
+            await app.save();
+            
+            // Still return success but with warning
+            res.status(201).json({
+                success: true,
+                message: 'App submitted but APK generation failed. Please try again.',
+                warning: genError.message,
+                data: { app }
+            });
+        }
+
     } catch (error) {
-        console.error('❌ Submit app error:', error);
+        console.error('❌ Submit error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to submit app: ' + error.message
@@ -285,6 +335,95 @@ router.post('/apps/submit', protect, async (req, res) => {
     }
 });
 
+// ============================================
+// DOWNLOAD APK
+// ============================================
+router.get('/apps/download/:id', async (req, res) => {
+    try {
+        const app = await App.findOne({ packageName: req.params.id });
+        if (!app) {
+            return res.status(404).json({
+                success: false,
+                message: 'App not found'
+            });
+        }
+
+        // Check if APK exists
+        const apkPath = path.join(__dirname, app.generatedApkPath || `generated-apps/${app.packageName}.apk`);
+        
+        if (!fs.existsSync(apkPath)) {
+            return res.status(404).json({
+                success: false,
+                message: 'APK file not found. Please regenerate the app.'
+            });
+        }
+
+        // Increment downloads
+        app.downloads += 1;
+        await app.save();
+
+        // Send file
+        res.download(apkPath, `${app.packageName}.apk`, (err) => {
+            if (err) {
+                console.error('Download error:', err);
+                res.status(500).json({
+                    success: false,
+                    message: 'Failed to download file'
+                });
+            }
+        });
+
+    } catch (error) {
+        console.error('Download error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to download app'
+        });
+    }
+});
+
+// ============================================
+// REGENERATE APK
+// ============================================
+router.post('/apps/regenerate/:id', protect, async (req, res) => {
+    try {
+        const app = await App.findById(req.params.id);
+        if (!app) {
+            return res.status(404).json({
+                success: false,
+                message: 'App not found'
+            });
+        }
+
+        // Check ownership
+        if (app.developer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to regenerate this app'
+            });
+        }
+
+        // Generate APK
+        const result = await generateAppAPK(app._id, req.user._id);
+
+        res.status(200).json({
+            success: true,
+            message: 'APK regenerated successfully',
+            data: result
+        });
+
+    } catch (error) {
+        console.error('Regenerate error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to regenerate APK: ' + error.message
+        });
+    }
+});
+
+// ============================================
+// FAVORITE
+// ============================================
 router.post('/apps/:id/favorite', protect, async (req, res) => {
     try {
         const user = req.user;
@@ -301,7 +440,7 @@ router.post('/apps/:id/favorite', protect, async (req, res) => {
             data: { favorites: user.favorites }
         });
     } catch (error) {
-        console.error('❌ Favorite error:', error);
+        console.error('Favorite error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to update favorites'
