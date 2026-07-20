@@ -1,49 +1,325 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#4f46e5">
-  <title>Alpha APK Store</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Alpha APK Store - Download and discover amazing Android apps">
+    <title>Alpha APK Store</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
-  <nav class="navbar">
-    <div class="container">
-      <div class="nav-brand" id="navHome">
-        <i class="fas fa-cube"></i>
-        <span>AlphaStore</span>
-      </div>
-      <div class="nav-search">
-        <input type="text" id="searchInput" placeholder="Search apps...">
-        <button id="searchBtn"><i class="fas fa-search"></i></button>
-      </div>
-      <div class="nav-links">
-        <a href="#" id="navHomeLink">Home</a>
-        <a href="#" id="navSubmitLink">Submit App</a>
-        <a href="#" id="navAuth" class="btn-primary">Login</a>
-      </div>
-    </div>
-  </nav>
+    <!-- ============================================
+    NAVBAR
+    ============================================ -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <i class="fas fa-cube"></i>
+                <span>AlphaStore</span>
+            </div>
+            
+            <div class="nav-search">
+                <input type="text" placeholder="Search apps...">
+                <button><i class="fas fa-search"></i></button>
+            </div>
+            
+            <div class="nav-links">
+                <a href="#" class="nav-home"><i class="fas fa-home"></i> Home</a>
+                <a href="#" class="nav-submit"><i class="fas fa-upload"></i> Submit</a>
+                <a href="#" class="btn-primary"><i class="fas fa-user"></i> Login</a>
+            </div>
+        </div>
+    </nav>
 
-  <main class="container" id="mainContent"></main>
+    <!-- ============================================
+    HERO SECTION
+    ============================================ -->
+    <section class="hero">
+        <div class="container">
+            <h1>📱 Discover Amazing Apps</h1>
+            <p>Find the best apps for your Android device. Download safely and securely.</p>
+            <div class="hero-buttons">
+                <a href="#" class="btn-primary">Browse Apps</a>
+                <a href="#" class="btn-secondary">Submit Your App</a>
+            </div>
+        </div>
+    </section>
 
-  <footer class="footer">
-    <div class="container">
-      <p>&copy; 2024 Alpha APK Store. All rights reserved.</p>
-      <div class="footer-links">
-        <a href="#">About</a>
-        <a href="#">Privacy</a>
-        <a href="#">Terms</a>
-        <a href="#">Contact</a>
-      </div>
-    </div>
-  </footer>
+    <!-- ============================================
+    CATEGORIES
+    ============================================ -->
+    <section class="categories">
+        <div class="container">
+            <h2 class="section-title">📂 Categories</h2>
+            <div class="categories-grid">
+                <div class="category-card">
+                    <i class="fas fa-gamepad"></i>
+                    <span>Games</span>
+                </div>
+                <div class="category-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>Education</span>
+                </div>
+                <div class="category-card">
+                    <i class="fas fa-coins"></i>
+                    <span>Finance</span>
+                </div>
+                <div class="category-card">
+                    <i class="fas fa-users"></i>
+                    <span>Social</span>
+                </div>
+                <div class="category-card">
+                    <i class="fas fa-tools"></i>
+                    <span>Tools</span>
+                </div>
+                <div class="category-card">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Productivity</span>
+                </div>
+                <div class="category-card">
+                    <i class="fas fa-heartbeat"></i>
+                    <span>Health</span>
+                </div>
+                <div class="category-card">
+                    <i class="fas fa-music"></i>
+                    <span>Music</span>
+                </div>
+            </div>
+        </div>
+    </section>
 
-  <script>
-    // All JavaScript is in app.js
-  </script>
-  <script src="app.js"></script>
+    <!-- ============================================
+    FEATURED APPS
+    ============================================ -->
+    <section class="featured-apps">
+        <div class="container">
+            <h2 class="section-title">⭐ Featured Apps</h2>
+            <div class="app-grid">
+                <!-- App Card 1 -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <img src="https://via.placeholder.com/64/4f46e5/ffffff?text=App" alt="App Icon" class="app-icon">
+                        <div class="app-info">
+                            <h3 class="app-name">Alpha Games</h3>
+                            <p class="app-desc">Best gaming experience on Android</p>
+                            <div class="app-meta">
+                                <span class="app-rating">⭐ 4.8</span>
+                                <span class="app-downloads">⬇️ 50K</span>
+                                <span class="app-category">Games</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="app-actions">
+                        <button class="btn-download"><i class="fas fa-download"></i> Download</button>
+                        <button class="btn-fav"><i class="fas fa-heart"></i></button>
+                    </div>
+                </div>
+
+                <!-- App Card 2 -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <img src="https://via.placeholder.com/64/7c3aed/ffffff?text=App" alt="App Icon" class="app-icon">
+                        <div class="app-info">
+                            <h3 class="app-name">Learn Pro</h3>
+                            <p class="app-desc">Learn anything, anywhere</p>
+                            <div class="app-meta">
+                                <span class="app-rating">⭐ 4.6</span>
+                                <span class="app-downloads">⬇️ 35K</span>
+                                <span class="app-category">Education</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="app-actions">
+                        <button class="btn-download"><i class="fas fa-download"></i> Download</button>
+                        <button class="btn-fav"><i class="fas fa-heart"></i></button>
+                    </div>
+                </div>
+
+                <!-- App Card 3 -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <img src="https://via.placeholder.com/64/059669/ffffff?text=App" alt="App Icon" class="app-icon">
+                        <div class="app-info">
+                            <h3 class="app-name">Finance Tracker</h3>
+                            <p class="app-desc">Track your expenses easily</p>
+                            <div class="app-meta">
+                                <span class="app-rating">⭐ 4.7</span>
+                                <span class="app-downloads">⬇️ 28K</span>
+                                <span class="app-category">Finance</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="app-actions">
+                        <button class="btn-download"><i class="fas fa-download"></i> Download</button>
+                        <button class="btn-fav"><i class="fas fa-heart"></i></button>
+                    </div>
+                </div>
+
+                <!-- App Card 4 -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <img src="https://via.placeholder.com/64/d97706/ffffff?text=App" alt="App Icon" class="app-icon">
+                        <div class="app-info">
+                            <h3 class="app-name">Social Connect</h3>
+                            <p class="app-desc">Connect with friends worldwide</p>
+                            <div class="app-meta">
+                                <span class="app-rating">⭐ 4.5</span>
+                                <span class="app-downloads">⬇️ 80K</span>
+                                <span class="app-category">Social</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="app-actions">
+                        <button class="btn-download"><i class="fas fa-download"></i> Download</button>
+                        <button class="btn-fav"><i class="fas fa-heart"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+    TRENDING APPS
+    ============================================ -->
+    <section class="trending-apps">
+        <div class="container">
+            <h2 class="section-title">🔥 Trending Now</h2>
+            <div class="app-grid">
+                <!-- Trending App 1 -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <img src="https://via.placeholder.com/64/dc2626/ffffff?text=App" alt="App Icon" class="app-icon">
+                        <div class="app-info">
+                            <h3 class="app-name">Photo Editor</h3>
+                            <p class="app-desc">Edit photos like a pro</p>
+                            <div class="app-meta">
+                                <span class="app-rating">⭐ 4.9</span>
+                                <span class="app-downloads">⬇️ 120K</span>
+                                <span class="app-category">Tools</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="app-actions">
+                        <button class="btn-download"><i class="fas fa-download"></i> Download</button>
+                        <button class="btn-fav"><i class="fas fa-heart"></i></button>
+                    </div>
+                </div>
+
+                <!-- Trending App 2 -->
+                <div class="app-card">
+                    <div class="app-header">
+                        <img src="https://via.placeholder.com/64/2563eb/ffffff?text=App" alt="App Icon" class="app-icon">
+                        <div class="app-info">
+                            <h3 class="app-name">Music Player</h3>
+                            <p class="app-desc">Listen to your favorite music</p>
+                            <div class="app-meta">
+                                <span class="app-rating">⭐ 4.7</span>
+                                <span class="app-downloads">⬇️ 95K</span>
+                                <span class="app-category">Music</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="app-actions">
+                        <button class="btn-download"><i class="fas fa-download"></i> Download</button>
+                        <button class="btn-fav"><i class="fas fa-heart"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+    SUBMIT APP SECTION
+    ============================================ -->
+    <section class="submit-section">
+        <div class="container">
+            <div class="submit-banner">
+                <div class="submit-content">
+                    <h2>🚀 Submit Your App</h2>
+                    <p>Share your app with millions of users. Get more downloads and grow your audience.</p>
+                    <a href="#" class="btn-primary">Submit Now</a>
+                </div>
+                <div class="submit-stats">
+                    <div class="stat">
+                        <span class="stat-number">2,500+</span>
+                        <span class="stat-label">Apps Available</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">1M+</span>
+                        <span class="stat-label">Total Downloads</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">500+</span>
+                        <span class="stat-label">Developers</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+    FOOTER
+    ============================================ -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <h3><i class="fas fa-cube"></i> AlphaStore</h3>
+                    <p>Discover and download amazing Android apps securely.</p>
+                    <div class="footer-social">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                        <a href="#"><i class="fab fa-discord"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Platform</h4>
+                    <a href="#">Browse Apps</a>
+                    <a href="#">Categories</a>
+                    <a href="#">Top Downloads</a>
+                    <a href="#">New Releases</a>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Developers</h4>
+                    <a href="#">Submit App</a>
+                    <a href="#">Developer Dashboard</a>
+                    <a href="#">Documentation</a>
+                    <a href="#">API</a>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Company</h4>
+                    <a href="#">About Us</a>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Contact</a>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2024 Alpha APK Store. All rights reserved.</p>
+                <p>Made with <i class="fas fa-heart" style="color:#ef4444;"></i> for developers</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ============================================
+    JAVASCRIPT (External)
+    ============================================ -->
+    <script src="app.js"></script>
 </body>
-    </html>
+                  </html>
