@@ -1,5 +1,5 @@
 // ===== API CONFIGURATION =====
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://alpha-app-store.onrender.com/api';
 
 const api = {
   get: async (endpoint, token = null) => {
