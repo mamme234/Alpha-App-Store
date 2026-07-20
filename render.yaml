@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: alpha-store-backend
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+
+  - type: web
+    name: alpha-store-frontend
+    runtime: static
+    plan: starter
+    region: oregon
+    buildCommand: echo "Static site - no build needed"
+    staticPublishPath: frontend
+    envVars:
+      - key: API_URL
+        value: https://alpha-store-backend.onrender.com/api
