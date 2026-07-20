@@ -71,7 +71,8 @@ router.post('/auth/register', async (req, res) => {
                     id: user._id,
                     username: user.username,
                     email: user.email,
-                    role: user.role
+                    role: user.role,
+                    favorites: user.favorites || []
                 },
                 token
             }
@@ -155,10 +156,10 @@ router.get('/auth/me', protect, async (req, res) => {
 });
 
 // ============================================
-// APP ROUTES - UPDATED
+// APP ROUTES
 // ============================================
 
-// GET ALL APPS (with filters)
+// GET ALL APPS
 router.get('/apps', async (req, res) => {
     try {
         const { category, limit = 50, search } = req.query;
@@ -247,12 +248,17 @@ router.get('/apps/trending', async (req, res) => {
 // GET SINGLE APP
 router.get('/apps/:id', async (req, res) => {
     try {
-        const app = await App.findOne({ 
-            $or: [
-                { packageName: req.params.id },
-                { _id: req.params.id }
-            ]
-        }).populate('developer', 'username avatar email');
+        const identifier = req.params.id;
+        
+        // Try to find by packageName first
+        let app = await App.findOne({ packageName: identifier })
+            .populate('developer', 'username avatar email');
+        
+        // If not found, try by _id
+        if (!app && identifier.match(/^[0-9a-fA-F]{24}$/)) {
+            app = await App.findById(identifier)
+                .populate('developer', 'username avatar email');
+        }
         
         if (!app) {
             return res.status(404).json({
@@ -269,7 +275,7 @@ router.get('/apps/:id', async (req, res) => {
         console.error('Get app error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to fetch app'
+            message: 'Failed to fetch app: ' + error.message
         });
     }
 });
@@ -371,7 +377,7 @@ router.post('/apps/submit', protect, async (req, res) => {
             app.generatedAt = new Date();
             app.apkUrl = result.apkUrl || `/generated/${app.packageName}.apk`;
             app.fileSize = result.fileSize || app.fileSize;
-            app.status = 'approved'; // Set to approved so it appears immediately
+            app.status = 'approved';
             
             // If it's the first app, make it featured
             const appCount = await App.countDocuments({ status: 'approved' });
@@ -399,7 +405,6 @@ router.post('/apps/submit', protect, async (req, res) => {
             app.generated = false;
             await app.save();
             
-            // Still return success but with warning
             res.status(201).json({
                 success: true,
                 message: 'App submitted but APK generation failed. Please try again.',
@@ -418,25 +423,29 @@ router.post('/apps/submit', protect, async (req, res) => {
 });
 
 // ============================================
-// DOWNLOAD APK
+// DOWNLOAD APK - FIXED
 // ============================================
-router.get('/apps/download/:id', async (req, res) => {
+router.get('/apps/download/:identifier', async (req, res) => {
     try {
-        const app = await App.findOne({ 
-            $or: [
-                { packageName: req.params.id },
-                { _id: req.params.id }
-            ]
-        });
+        const identifier = req.params.identifier;
+        console.log(`📥 Download request for: ${identifier}`);
+        
+        // Try to find by packageName first
+        let app = await App.findOne({ packageName: identifier });
+        
+        // If not found by packageName, try by _id
+        if (!app && identifier.match(/^[0-9a-fA-F]{24}$/)) {
+            app = await App.findById(identifier);
+        }
         
         if (!app) {
             return res.status(404).json({
                 success: false,
-                message: 'App not found'
+                message: `App not found with identifier: ${identifier}`
             });
         }
 
-        // Check if APK exists
+        // Build APK path
         let apkPath = app.generatedApkPath || `generated-apps/${app.packageName}.apk`;
         
         // If path doesn't start with __dirname, make it relative
@@ -445,6 +454,7 @@ router.get('/apps/download/:id', async (req, res) => {
         }
         
         const fullPath = path.join(__dirname, apkPath);
+        console.log(`📁 Looking for APK at: ${fullPath}`);
         
         if (!fs.existsSync(fullPath)) {
             console.log(`⚠️ APK not found at: ${fullPath}`);
@@ -463,6 +473,7 @@ router.get('/apps/download/:id', async (req, res) => {
         res.setHeader('Content-Type', 'application/vnd.android.package-archive');
         res.setHeader('Content-Disposition', `attachment; filename="${app.packageName}.apk"`);
         res.setHeader('Content-Length', stat.size);
+        res.setHeader('Cache-Control', 'no-cache');
         
         const fileStream = fs.createReadStream(fullPath);
         fileStream.pipe(res);
