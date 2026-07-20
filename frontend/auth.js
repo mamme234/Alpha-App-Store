@@ -16,7 +16,8 @@ const Auth = {
         authToken = result.data.token;
         localStorage.setItem('token', authToken);
         localStorage.setItem('user', JSON.stringify(currentUser));
-        showNotification('Login successful!', 'success');
+        showNotification('✅ Login successful!', 'success');
+        updateUI();
         return { success: true };
       }
       showNotification(result.message || 'Login failed', 'error');
@@ -35,7 +36,8 @@ const Auth = {
         authToken = result.data.token;
         localStorage.setItem('token', authToken);
         localStorage.setItem('user', JSON.stringify(currentUser));
-        showNotification('Registration successful!', 'success');
+        showNotification('✅ Registration successful!', 'success');
+        updateUI();
         return { success: true };
       }
       showNotification(result.message || 'Registration failed', 'error');
@@ -52,6 +54,7 @@ const Auth = {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     showNotification('Logged out', 'info');
+    updateUI();
     navigateTo('home');
   },
 
@@ -66,92 +69,24 @@ const Auth = {
     } catch (error) {
       console.error('Failed to load user:', error);
     }
+    updateUI();
   }
 };
 
-// ===== NAVIGATION =====
-const navigateTo = (page, params = null) => {
-  const mainContent = document.getElementById('mainContent');
+// ===== UPDATE UI =====
+function updateUI() {
+  const authBtn = document.getElementById('navAuth');
+  const submitBtn = document.getElementById('navSubmit');
   
-  switch(page) {
-    case 'home':
-      renderHome(mainContent);
-      break;
-    case 'app':
-      renderAppDetail(mainContent, params);
-      break;
-    case 'login':
-      renderLogin(mainContent);
-      break;
-    case 'register':
-      renderRegister(mainContent);
-      break;
-    case 'search':
-      renderSearchResults(mainContent, params);
-      break;
-    default:
-      renderHome(mainContent);
-  }
-};
-
-// ===== NOTIFICATION =====
-const showNotification = (message, type = 'info') => {
-  const existing = document.querySelector('.notification');
-  if (existing) existing.remove();
-  
-  const div = document.createElement('div');
-  div.className = `notification ${type}`;
-  div.textContent = message;
-  document.body.appendChild(div);
-  
-  setTimeout(() => div.remove(), 3000);
-};
-
-// ===== EVENT LISTENERS =====
-document.addEventListener('DOMContentLoaded', () => {
-  // Load user
-  Auth.loadUser();
-  
-  // Update auth button
-  updateAuthButton();
-  
-  // Search
-  document.getElementById('searchBtn').addEventListener('click', () => {
-    const query = document.getElementById('searchInput').value.trim();
-    if (query) navigateTo('search', { q: query });
-  });
-  
-  document.getElementById('searchInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      const query = e.target.value.trim();
-      if (query) navigateTo('search', { q: query });
-    }
-  });
-  
-  // Nav links
-  document.querySelector('.nav-home').addEventListener('click', (e) => {
-    e.preventDefault();
-    navigateTo('home');
-  });
-  
-  document.getElementById('navAuth').addEventListener('click', (e) => {
-    e.preventDefault();
-    if (Auth.isLoggedIn()) {
-      Auth.logout();
-    } else {
-      navigateTo('login');
-    }
-  });
-});
-
-// ===== UPDATE AUTH BUTTON =====
-const updateAuthButton = () => {
-  const btn = document.getElementById('navAuth');
   if (Auth.isLoggedIn()) {
-    btn.textContent = 'Logout';
-    btn.className = 'btn-primary';
+    authBtn.textContent = `👤 ${currentUser?.username || 'User'}`;
+    authBtn.className = '';
+    authBtn.style.color = '#4f46e5';
+    if (submitBtn) submitBtn.style.display = 'inline';
   } else {
-    btn.textContent = 'Login';
-    btn.className = 'btn-primary';
+    authBtn.textContent = 'Login';
+    authBtn.className = 'btn-primary';
+    authBtn.style.color = '';
+    if (submitBtn) submitBtn.style.display = 'none';
   }
-};
+}
