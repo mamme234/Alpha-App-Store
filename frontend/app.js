@@ -7,10 +7,10 @@
 // CONFIGURATION
 // ============================================
 const CONFIG = {
-    // Backend API URL (Render)
+    // Backend API URL (Your Render URL - FIXED)
     API_URL: 'https://alpha-app-store.onrender.com/api',
     
-    // Frontend URL (Vercel)
+    // Frontend URL (Your Vercel URL)
     FRONTEND_URL: 'https://alpha-app-store.vercel.app',
     
     // App Info
@@ -23,7 +23,7 @@ console.log(`📍 Backend API: ${CONFIG.API_URL}`);
 console.log(`📍 Frontend URL: ${CONFIG.FRONTEND_URL}`);
 
 // ============================================
-// API CLIENT
+// API CLIENT (IMPROVED)
 // ============================================
 const api = {
     get: async (endpoint, token = null) => {
@@ -34,10 +34,14 @@ const api = {
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
         try {
-            const res = await fetch(`${CONFIG.API_URL}${endpoint}`, { 
+            const url = `${CONFIG.API_URL}${endpoint}`;
+            console.log(`📡 GET: ${url}`);
+            
+            const res = await fetch(url, { 
                 headers,
                 credentials: 'include'
             });
+            
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
                 throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
@@ -57,7 +61,10 @@ const api = {
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
         try {
-            const res = await fetch(`${CONFIG.API_URL}${endpoint}`, {
+            const url = `${CONFIG.API_URL}${endpoint}`;
+            console.log(`📡 POST: ${url}`);
+            
+            const res = await fetch(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(data),
@@ -83,7 +90,8 @@ const api = {
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
         try {
-            const res = await fetch(`${CONFIG.API_URL}${endpoint}`, {
+            const url = `${CONFIG.API_URL}${endpoint}`;
+            const res = await fetch(url, {
                 method: 'PUT',
                 headers,
                 body: JSON.stringify(data),
@@ -108,7 +116,8 @@ const api = {
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
         try {
-            const res = await fetch(`${CONFIG.API_URL}${endpoint}`, {
+            const url = `${CONFIG.API_URL}${endpoint}`;
+            const res = await fetch(url, {
                 method: 'DELETE',
                 headers,
                 credentials: 'include'
@@ -236,16 +245,32 @@ const Auth = {
     checkHealth: async () => {
         try {
             console.log('🏥 Checking server health...');
-            const res = await fetch(`${CONFIG.API_URL.replace('/api', '')}/health`, {
+            // Use the main domain, not /api
+            const baseUrl = CONFIG.API_URL.replace('/api', '');
+            const res = await fetch(`${baseUrl}/health`, {
                 method: 'GET',
                 headers: { 'Accept': 'application/json' }
             });
+            
             if (res.ok) {
                 const data = await res.json();
                 console.log('✅ Server is healthy:', data);
                 return true;
             }
-            console.log('⚠️ Server health check failed');
+            
+            // If health check fails, try root endpoint
+            console.log('⚠️ Health check failed, trying root...');
+            const rootRes = await fetch(baseUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            
+            if (rootRes.ok) {
+                console.log('✅ Server root is accessible');
+                return true;
+            }
+            
+            console.log('⚠️ Server is not responding');
             return false;
         } catch (error) {
             console.error('❌ Server health check error:', error);
@@ -327,9 +352,15 @@ function navigateTo(page, params = null) {
 }
 
 // ============================================
-// RENDER HOME
+// RENDER HOME (UPDATED TO CHECK API)
 // ============================================
-function renderHome(container) {
+async function renderHome(container) {
+    // Check API health first
+    const isHealthy = await Auth.checkHealth();
+    if (!isHealthy) {
+        showNotification('⚠️ Server is starting up. Please wait a moment.', 'warning');
+    }
+    
     container.innerHTML = `
         <!-- Hero -->
         <section class="hero">
@@ -942,7 +973,7 @@ async function handleSubmitApp(e) {
 }
 
 // ============================================
-// HANDLE DOWNLOAD - FIXED
+// HANDLE DOWNLOAD
 // ============================================
 async function handleDownload(appId) {
     if (!Auth.isLoggedIn()) {
@@ -1016,6 +1047,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isHealthy = await Auth.checkHealth();
     if (!isHealthy) {
         showNotification('⚠️ Server is starting up. Please wait a moment.', 'warning');
+    } else {
+        console.log('✅ Server connection established');
     }
     
     // Load user
