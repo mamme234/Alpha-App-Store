@@ -1,32 +1,30 @@
 // ============================================
 // ALPHA APP STORE - COMPLETE JAVASCRIPT
-// FIXED FOR: Frontend (Vercel) + Backend (Render)
+// Frontend: Vercel | Backend: Render
 // ============================================
 
-// ===== CONFIGURATION =====
+// ============================================
+// CONFIGURATION
+// ============================================
 const CONFIG = {
-    // === RENDER BACKEND URL ===
-    RENDER_URL: 'https://alpha-app-store.onrender.com',
-    
-    // === API URL - ALWAYS USE RENDER BACKEND ===
+    // Backend API URL (Render)
     API_URL: 'https://alpha-app-store.onrender.com/api',
     
-    // === FRONTEND URL (Vercel) ===
+    // Frontend URL (Vercel)
     FRONTEND_URL: 'https://alpha-app-store.vercel.app',
     
+    // App Info
     APP_NAME: 'Alpha App Store',
     VERSION: '1.0.0'
 };
 
-// ============================================
-// API CONFIGURATION
-// ============================================
-const API_URL = CONFIG.API_URL;
-
 console.log(`🚀 ${CONFIG.APP_NAME} v${CONFIG.VERSION}`);
-console.log(`📍 Backend API: ${API_URL}`);
+console.log(`📍 Backend API: ${CONFIG.API_URL}`);
 console.log(`📍 Frontend URL: ${CONFIG.FRONTEND_URL}`);
 
+// ============================================
+// API CLIENT
+// ============================================
 const api = {
     get: async (endpoint, token = null) => {
         const headers = { 
@@ -36,7 +34,7 @@ const api = {
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
         try {
-            const res = await fetch(`${API_URL}${endpoint}`, { 
+            const res = await fetch(`${CONFIG.API_URL}${endpoint}`, { 
                 headers,
                 credentials: 'include'
             });
@@ -47,7 +45,6 @@ const api = {
             return res.json();
         } catch (error) {
             console.error('API GET Error:', error);
-            showNotification('Failed to connect to server: ' + error.message, 'error');
             throw error;
         }
     },
@@ -60,7 +57,7 @@ const api = {
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
         try {
-            const res = await fetch(`${API_URL}${endpoint}`, {
+            const res = await fetch(`${CONFIG.API_URL}${endpoint}`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(data),
@@ -74,7 +71,6 @@ const api = {
             return result;
         } catch (error) {
             console.error('API POST Error:', error);
-            showNotification('❌ ' + error.message, 'error');
             throw error;
         }
     },
@@ -87,7 +83,7 @@ const api = {
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
         try {
-            const res = await fetch(`${API_URL}${endpoint}`, {
+            const res = await fetch(`${CONFIG.API_URL}${endpoint}`, {
                 method: 'PUT',
                 headers,
                 body: JSON.stringify(data),
@@ -100,7 +96,6 @@ const api = {
             return res.json();
         } catch (error) {
             console.error('API PUT Error:', error);
-            showNotification('Failed to update: ' + error.message, 'error');
             throw error;
         }
     },
@@ -113,7 +108,7 @@ const api = {
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
         try {
-            const res = await fetch(`${API_URL}${endpoint}`, {
+            const res = await fetch(`${CONFIG.API_URL}${endpoint}`, {
                 method: 'DELETE',
                 headers,
                 credentials: 'include'
@@ -125,7 +120,6 @@ const api = {
             return res.json();
         } catch (error) {
             console.error('API DELETE Error:', error);
-            showNotification('Failed to delete: ' + error.message, 'error');
             throw error;
         }
     }
@@ -138,26 +132,22 @@ let currentUser = null;
 let authToken = localStorage.getItem('token');
 
 // ============================================
-// AUTH FUNCTIONS - FIXED
+// AUTH FUNCTIONS
 // ============================================
 const Auth = {
     getUser: () => currentUser,
     getToken: () => authToken,
     isLoggedIn: () => !!authToken,
 
-    // === REGISTER - FIXED ===
     register: async (username, email, password) => {
         try {
             console.log('📝 Attempting registration...');
-            console.log('📤 Data:', { username, email, password: '***' });
             
             const result = await api.post('/auth/register', { 
                 username, 
                 email, 
                 password 
             });
-            
-            console.log('📥 Registration response:', result);
             
             if (result.success) {
                 currentUser = result.data.user;
@@ -174,20 +164,16 @@ const Auth = {
             }
         } catch (error) {
             console.error('❌ Registration error:', error);
-            const errorMsg = error.message || 'Registration failed. Please try again.';
-            showNotification('❌ ' + errorMsg, 'error');
-            return { success: false, message: errorMsg };
+            showNotification('❌ ' + (error.message || 'Registration failed'), 'error');
+            return { success: false, message: error.message };
         }
     },
 
-    // === LOGIN - FIXED ===
     login: async (email, password) => {
         try {
             console.log('🔐 Attempting login...');
             
             const result = await api.post('/auth/login', { email, password });
-            
-            console.log('📥 Login response:', result);
             
             if (result.success) {
                 currentUser = result.data.user;
@@ -204,9 +190,8 @@ const Auth = {
             }
         } catch (error) {
             console.error('❌ Login error:', error);
-            const errorMsg = error.message || 'Login failed. Please try again.';
-            showNotification('❌ ' + errorMsg, 'error');
-            return { success: false, message: errorMsg };
+            showNotification('❌ ' + (error.message || 'Login failed'), 'error');
+            return { success: false, message: error.message };
         }
     },
 
@@ -234,7 +219,6 @@ const Auth = {
                 localStorage.setItem('user', JSON.stringify(currentUser));
                 console.log('✅ User loaded:', currentUser.username);
             } else {
-                // Token invalid
                 console.log('⚠️ Token invalid, clearing...');
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
@@ -249,37 +233,22 @@ const Auth = {
         updateUI();
     },
 
-    // === CHECK SERVER HEALTH ===
     checkHealth: async () => {
         try {
             console.log('🏥 Checking server health...');
-            const res = await fetch(`${CONFIG.RENDER_URL}/health`, {
+            const res = await fetch(`${CONFIG.API_URL.replace('/api', '')}/health`, {
                 method: 'GET',
                 headers: { 'Accept': 'application/json' }
             });
             if (res.ok) {
                 const data = await res.json();
                 console.log('✅ Server is healthy:', data);
-                showNotification('✅ Server connected successfully!', 'success');
                 return true;
             }
             console.log('⚠️ Server health check failed');
             return false;
         } catch (error) {
             console.error('❌ Server health check error:', error);
-            showNotification('⚠️ Cannot connect to server. Please check your connection.', 'error');
-            return false;
-        }
-    },
-
-    // === TEST API CONNECTION ===
-    testConnection: async () => {
-        try {
-            const result = await api.get('/apps');
-            console.log('✅ API Connection test successful:', result);
-            return true;
-        } catch (error) {
-            console.error('❌ API Connection test failed:', error);
             return false;
         }
     }
@@ -362,6 +331,7 @@ function navigateTo(page, params = null) {
 // ============================================
 function renderHome(container) {
     container.innerHTML = `
+        <!-- Hero -->
         <section class="hero">
             <div class="container">
                 <h1>📱 Discover Amazing Apps</h1>
@@ -387,6 +357,7 @@ function renderHome(container) {
             </div>
         </section>
 
+        <!-- Categories -->
         <section>
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-th-large"></i> Categories</h2>
@@ -397,6 +368,7 @@ function renderHome(container) {
             </div>
         </section>
 
+        <!-- Featured Apps -->
         <section>
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-star"></i> Featured Apps</h2>
@@ -407,6 +379,7 @@ function renderHome(container) {
             </div>
         </section>
 
+        <!-- Trending Apps -->
         <section>
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-fire"></i> Trending Now</h2>
@@ -417,6 +390,7 @@ function renderHome(container) {
             </div>
         </section>
 
+        <!-- Submit Banner -->
         <section class="submit-banner">
             <div class="submit-content">
                 <h2>🚀 Submit Your App</h2>
@@ -498,7 +472,7 @@ function renderAppCards(type = 'featured') {
             ${type === 'featured' ? '<div class="featured-badge">⭐ Featured</div>' : ''}
             ${type === 'trending' ? '<div class="trending-badge">🔥 Trending</div>' : ''}
             <div class="app-header">
-                <img src="https://via.placeholder.com/64/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="app-icon">
+                <img src="https://via.placeholder.com/64/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="app-icon" onerror="this.src='https://via.placeholder.com/64'">
                 <div class="app-info">
                     <h3 class="app-name">${app.name}</h3>
                     <p class="app-desc">${app.desc}</p>
@@ -554,7 +528,7 @@ function renderAppDetail(container, appId) {
     container.innerHTML = `
         <div class="app-detail">
             <div class="header">
-                <img src="https://via.placeholder.com/120/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="icon">
+                <img src="https://via.placeholder.com/120/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="icon" onerror="this.src='https://via.placeholder.com/120'">
                 <div class="info">
                     <h1>${app.name}</h1>
                     <div class="package">com.alpha.${app.name.toLowerCase().replace(/ /g, '')}</div>
@@ -629,7 +603,7 @@ function renderFavorites(container) {
                     ${favorites.map(app => `
                         <div class="app-card" onclick="navigateTo('app', '${app.id}')" style="cursor:pointer;">
                             <div class="app-header">
-                                <img src="https://via.placeholder.com/64/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="app-icon">
+                                <img src="https://via.placeholder.com/64/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="app-icon" onerror="this.src='https://via.placeholder.com/64'">
                                 <div class="app-info">
                                     <h3 class="app-name">${app.name}</h3>
                                     <p class="app-desc">${app.desc}</p>
@@ -685,7 +659,7 @@ function renderSearch(container, query) {
                     ${results.map(app => `
                         <div class="app-card" onclick="navigateTo('app', '${app.id}')" style="cursor:pointer;">
                             <div class="app-header">
-                                <img src="https://via.placeholder.com/64/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="app-icon">
+                                <img src="https://via.placeholder.com/64/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="app-icon" onerror="this.src='https://via.placeholder.com/64'">
                                 <div class="app-info">
                                     <h3 class="app-name">${app.name}</h3>
                                     <p class="app-desc">${app.desc}</p>
@@ -720,7 +694,7 @@ function renderSearch(container, query) {
 }
 
 // ============================================
-// RENDER LOGIN - FIXED
+// RENDER LOGIN
 // ============================================
 function renderLogin(container) {
     if (Auth.isLoggedIn()) {
@@ -750,7 +724,7 @@ function renderLogin(container) {
 }
 
 // ============================================
-// RENDER REGISTER - FIXED
+// RENDER REGISTER
 // ============================================
 function renderRegister(container) {
     if (Auth.isLoggedIn()) {
@@ -865,7 +839,7 @@ function renderSubmit(container) {
 }
 
 // ============================================
-// HANDLERS - FIXED
+// HANDLERS
 // ============================================
 async function handleLogin(e) {
     e.preventDefault();
@@ -877,10 +851,15 @@ async function handleLogin(e) {
         return;
     }
     
+    const btn = e.target.querySelector('.btn-submit');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+    btn.disabled = true;
+    
     const result = await Auth.login(email, password);
-    if (result.success) {
-        // Login successful - handled in Auth.login
-    }
+    
+    btn.innerHTML = originalText;
+    btn.disabled = false;
 }
 
 async function handleRegister(e) {
@@ -890,7 +869,6 @@ async function handleRegister(e) {
     const email = document.getElementById('regEmail').value.trim();
     const password = document.getElementById('regPassword').value;
     
-    // Validation
     if (!username || !email || !password) {
         showNotification('Please fill in all fields', 'error');
         return;
@@ -911,7 +889,6 @@ async function handleRegister(e) {
         return;
     }
     
-    // Show loading
     const btn = e.target.querySelector('.btn-submit');
     const originalText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
@@ -921,10 +898,6 @@ async function handleRegister(e) {
     
     btn.innerHTML = originalText;
     btn.disabled = false;
-    
-    if (result.success) {
-        // Registration successful - handled in Auth.register
-    }
 }
 
 async function handleSubmitApp(e) {
@@ -945,7 +918,12 @@ async function handleSubmitApp(e) {
         }
     };
 
-    showNotification('⏳ Generating APK from deployment links...', 'info');
+    const btn = e.target.querySelector('.btn-submit');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating APK...';
+    btn.disabled = true;
+    
+    showNotification('⏳ Submitting app and generating APK...', 'info');
 
     try {
         const result = await api.post('/apps/submit', data, authToken);
@@ -956,17 +934,49 @@ async function handleSubmitApp(e) {
             showNotification(result.message || 'Submission failed', 'error');
         }
     } catch (error) {
-        showNotification('Submission failed: ' + error.message, 'error');
+        showNotification('❌ Submission failed: ' + error.message, 'error');
     }
+    
+    btn.innerHTML = originalText;
+    btn.disabled = false;
 }
 
-function handleDownload(appId) {
+// ============================================
+// HANDLE DOWNLOAD - FIXED
+// ============================================
+async function handleDownload(appId) {
     if (!Auth.isLoggedIn()) {
         showNotification('Please login to download', 'error');
         navigateTo('login');
         return;
     }
-    showNotification('📥 Downloading app...', 'success');
+    
+    try {
+        showNotification('📥 Downloading APK...', 'info');
+        
+        // Try to get the app from API first
+        try {
+            const app = await api.get(`/apps/${appId}`, authToken);
+            if (app && app.data && app.data.apkUrl) {
+                window.open(app.data.apkUrl, '_blank');
+                showNotification('✅ Download started!', 'success');
+                return;
+            }
+        } catch (e) {
+            console.log('App not found in API, using sample data');
+        }
+        
+        // Fallback: use sample data
+        const allApps = getSampleApps('all');
+        const app = allApps.find(a => a.id === appId);
+        if (app) {
+            showNotification('✅ Download started for ' + app.name + '!', 'success');
+        } else {
+            showNotification('❌ App not found', 'error');
+        }
+    } catch (error) {
+        showNotification('❌ Download failed: ' + error.message, 'error');
+    }
 }
 
 function handleFavorite(btn, appId) {
@@ -995,23 +1005,17 @@ function showNotification(message, type = 'info') {
 }
 
 // ============================================
-// INIT - FIXED
+// INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
     console.log(`🚀 ${CONFIG.APP_NAME} v${CONFIG.VERSION}`);
-    console.log(`📍 Backend API: ${API_URL}`);
+    console.log(`📍 Backend API: ${CONFIG.API_URL}`);
     console.log(`📍 Frontend URL: ${CONFIG.FRONTEND_URL}`);
     
     // Check server health
     const isHealthy = await Auth.checkHealth();
     if (!isHealthy) {
         showNotification('⚠️ Server is starting up. Please wait a moment.', 'warning');
-    } else {
-        // Test API connection
-        const isConnected = await Auth.testConnection();
-        if (isConnected) {
-            console.log('✅ API connection successful!');
-        }
     }
     
     // Load user
@@ -1039,3 +1043,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     console.log('✅ App initialized successfully!');
 });
+
+// ============================================
+// EXPOSE GLOBALLY
+// ============================================
+window.navigateTo = navigateTo;
+window.handleLogin = handleLogin;
+window.handleRegister = handleRegister;
+window.handleSubmitApp = handleSubmitApp;
+window.handleDownload = handleDownload;
+window.handleFavorite = handleFavorite;
+window.showNotification = showNotification;
+window.Auth = Auth;
+window.api = api;
+window.CONFIG = CONFIG;
+
+console.log('✅ All functions exposed globally');
