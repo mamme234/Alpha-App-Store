@@ -48,18 +48,9 @@ const UserSchema = new mongoose.Schema({
             type: Date,
             default: Date.now
         }
-    }],
-    developerProfile: {
-        companyName: String,
-        companyWebsite: String,
-        verified: {
-            type: Boolean,
-            default: false
-        }
-    }
+    }]
 }, { timestamps: true });
 
-// Hash password before saving
 UserSchema.pre('save', async function(next) {
     if (!this.isModified('password')) return next();
     const salt = await bcrypt.genSalt(10);
@@ -67,68 +58,29 @@ UserSchema.pre('save', async function(next) {
     next();
 });
 
-// Compare password method
 UserSchema.methods.comparePassword = async function(candidate) {
     return await bcrypt.compare(candidate, this.password);
 };
 
 // ===== APP MODEL =====
 const AppSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    packageName: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true
-    },
-    description: {
-        type: String,
-        required: true
-    },
-    shortDescription: {
-        type: String,
-        required: true,
-        maxlength: 160
-    },
-    icon: {
-        type: String,
-        default: 'https://via.placeholder.com/128'
-    },
+    name: { type: String, required: true, trim: true },
+    packageName: { type: String, required: true, unique: true, trim: true },
+    description: { type: String, required: true },
+    shortDescription: { type: String, required: true, maxlength: 160 },
+    icon: { type: String, default: 'https://via.placeholder.com/128' },
     screenshots: [String],
     category: {
         type: String,
         required: true,
         enum: ['games', 'education', 'finance', 'social', 'tools', 'productivity', 'health', 'music', 'entertainment', 'news']
     },
-    version: {
-        type: String,
-        default: '1.0.0'
-    },
-    fileSize: {
-        type: String,
-        default: '5MB'
-    },
-    fileSizeBytes: {
-        type: Number,
-        default: 5242880
-    },
-    minAndroidVersion: {
-        type: String,
-        default: '5.0'
-    },
-    apkUrl: {
-        type: String,
-        default: ''
-    },
-    developer: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
+    version: { type: String, default: '1.0.0' },
+    fileSize: { type: String, default: '5MB' },
+    fileSizeBytes: { type: Number, default: 5242880 },
+    minAndroidVersion: { type: String, default: '5.0' },
+    apkUrl: { type: String, default: '' },
+    developer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     deployment: {
         vercel: { type: String, default: '' },
         render: { type: String, default: '' },
