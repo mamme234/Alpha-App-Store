@@ -361,7 +361,7 @@ function renderAppCards(apps, type = 'featured') {
         const isGenerated = app.generated === true || app.status === 'generated' || app.status === 'approved';
         
         return `
-            <div class="app-card" onclick="navigateTo('app', '${app._id || app.packageName}')" style="position:relative;cursor:pointer;">
+            <div class="app-card" onclick="navigateTo('app', '${app.packageName || app._id}')" style="position:relative;cursor:pointer;">
                 ${isNew ? '<div class="new-badge" style="position:absolute;top:12px;right:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;">🆕 NEW</div>' : ''}
                 ${type === 'featured' ? '<div class="featured-badge">⭐ Featured</div>' : ''}
                 ${type === 'trending' ? '<div class="trending-badge">🔥 Trending</div>' : ''}
@@ -380,7 +380,7 @@ function renderAppCards(apps, type = 'featured') {
                     </div>
                 </div>
                 <div class="app-actions" onclick="event.stopPropagation();">
-                    <button class="btn-download" onclick="handleDownload('${app._id || app.packageName}')">
+                    <button class="btn-download" onclick="handleDownload('${app.packageName || app._id}')">
                         <i class="fas fa-download"></i> ${isGenerated ? 'Download APK' : 'Download'}
                     </button>
                     <button class="btn-fav ${isFavorite ? 'active' : ''}" onclick="handleFavorite(this, '${app._id}')">
@@ -498,7 +498,7 @@ async function renderAppDetail(container, appId) {
                             ${isGenerated ? '<span style="background:#4f46e5;color:white;padding:2px 12px;border-radius:12px;font-size:12px;">✅ APK Generated</span>' : ''}
                         </div>
                         ${isGenerated ? `
-                            <button class="download-btn" onclick="handleDownload('${app._id || app.packageName}')">
+                            <button class="download-btn" onclick="handleDownload('${app.packageName}')">
                                 <i class="fas fa-download"></i> Download APK (${app.fileSize || '5MB'})
                             </button>
                         ` : `
@@ -506,7 +506,7 @@ async function renderAppDetail(container, appId) {
                                 <i class="fas fa-clock"></i> APK is being generated. Please wait...
                             </div>
                         `}
-                        <button class="btn-fav ${isFavorite ? 'active' : ''}" onclick="handleFavorite(this, '${app._id}')" style="padding:14px 24px;font-size:16px;margin-top:10px;border:none;border-radius:12px;cursor:pointer;">
+                        <button class="btn-fav ${isFavorite ? 'active' : ''}" onclick="handleFavorite(this, '${app._id}')" style="padding:14px 24px;font-size:16px;margin-top:10px;border:none;border-radius:12px;cursor:pointer;background:${isFavorite ? '#fee2e2' : '#f3f4f6'};color:${isFavorite ? '#ef4444' : '#6b7280'};">
                             <i class="fas fa-heart"></i> ${isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
                         </button>
                     </div>
@@ -717,7 +717,7 @@ function renderRegister(container) {
 }
 
 // ============================================
-// RENDER SUBMIT - WITH APK GENERATION PROGRESS
+// RENDER SUBMIT
 // ============================================
 function renderSubmit(container) {
     if (!Auth.isLoggedIn()) {
@@ -736,7 +736,6 @@ function renderSubmit(container) {
             <h2>📤 Submit Your App</h2>
             <p style="text-align:center;color:#6b7280;margin-bottom:20px;">Add your app to the store and reach millions of users</p>
             
-            <!-- Progress Bar (hidden initially) -->
             <div id="generationProgress" style="display:none;margin-bottom:20px;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
                     <span style="font-weight:600;">Generating APK...</span>
@@ -821,7 +820,6 @@ function renderSubmit(container) {
 async function handleSubmitApp(e) {
     e.preventDefault();
     
-    // Show progress bar
     const progressDiv = document.getElementById('generationProgress');
     const progressBar = document.getElementById('progressBar');
     const progressText = document.getElementById('progressText');
@@ -832,8 +830,13 @@ async function handleSubmitApp(e) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
     
-    // Step 1: Collect data
-    updateProgress(progressBar, progressText, progressStatus, 10, '📝 Collecting app data...');
+    function updateProgress(percent, message) {
+        progressBar.style.width = percent + '%';
+        progressText.textContent = percent + '%';
+        progressStatus.textContent = message;
+    }
+    
+    updateProgress(10, '📝 Collecting app data...');
     
     const data = {
         name: document.getElementById('appName').value,
@@ -850,7 +853,6 @@ async function handleSubmitApp(e) {
         }
     };
 
-    // Validate deployment URL
     const hasDeployment = Object.values(data.deployment).some(url => url && url.length > 0);
     if (!hasDeployment) {
         showNotification('⚠️ Please provide at least one deployment URL', 'error');
@@ -860,47 +862,35 @@ async function handleSubmitApp(e) {
         return;
     }
 
-    updateProgress(progressBar, progressText, progressStatus, 30, '📤 Submitting to server...');
+    updateProgress(30, '📤 Submitting to server...');
 
     try {
-        // Step 2: Submit to API
         const result = await api.post('/apps/submit', data, authToken);
         
         if (result.success) {
-            updateProgress(progressBar, progressText, progressStatus, 70, '✅ App saved! Generating APK...');
+            updateProgress(70, '✅ App saved! Generating APK...');
             
-            // Step 3: Check if APK was generated
             if (result.apkUrl || result.downloadUrl) {
-                updateProgress(progressBar, progressText, progressStatus, 90, '📦 APK generated successfully!');
-                
-                // Small delay to show completion
+                updateProgress(90, '📦 APK generated successfully!');
                 await new Promise(resolve => setTimeout(resolve, 500));
-                updateProgress(progressBar, progressText, progressStatus, 100, '🎉 Done! APK is ready for download.');
+                updateProgress(100, '🎉 Done! APK is ready for download.');
                 
                 showNotification(`✅ "${data.name}" submitted and APK generated!`, 'success');
                 
-                // Step 4: Show download option
                 setTimeout(() => {
-                    // Reset form
                     document.getElementById('submitForm').reset();
                     document.getElementById('charCount').textContent = '0/160';
                     progressDiv.style.display = 'none';
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '🚀 Generate & Submit APK';
                     
-                    // Show success with download link
-                    showNotification(`📥 Download your APK from the app page!`, 'success');
-                    
-                    // Navigate to home after 2 seconds
-                    setTimeout(() => {
-                        renderHome(document.getElementById('mainContent'));
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }, 1000);
+                    // Navigate to the new app's detail page
+                    const packageName = result.data?.app?.packageName || data.packageName;
+                    navigateTo('app', packageName);
                 }, 1000);
-                
             } else {
-                updateProgress(progressBar, progressText, progressStatus, 80, '⚠️ APK generation in progress...');
-                showNotification(`✅ "${data.name}" submitted! APK is being generated.`, 'info');
+                updateProgress(80, '⚠️ APK generation in progress...');
+                showNotification(`✅ "${data.name}" submitted!`, 'info');
                 
                 setTimeout(() => {
                     progressDiv.style.display = 'none';
@@ -911,7 +901,7 @@ async function handleSubmitApp(e) {
                 }, 2000);
             }
         } else {
-            updateProgress(progressBar, progressText, progressStatus, 0, '❌ Submission failed');
+            updateProgress(0, '❌ Submission failed');
             showNotification(result.message || 'Submission failed', 'error');
             
             setTimeout(() => {
@@ -922,7 +912,7 @@ async function handleSubmitApp(e) {
         }
     } catch (error) {
         console.error('Submission error:', error);
-        updateProgress(progressBar, progressText, progressStatus, 0, '❌ Error: ' + error.message);
+        updateProgress(0, '❌ Error: ' + error.message);
         showNotification('❌ Submission failed: ' + error.message, 'error');
         
         setTimeout(() => {
@@ -934,16 +924,7 @@ async function handleSubmitApp(e) {
 }
 
 // ============================================
-// UPDATE PROGRESS HELPER
-// ============================================
-function updateProgress(bar, text, status, percent, message) {
-    bar.style.width = percent + '%';
-    text.textContent = percent + '%';
-    status.textContent = message;
-}
-
-// ============================================
-// HANDLE DOWNLOAD
+// HANDLE DOWNLOAD - FIXED
 // ============================================
 async function handleDownload(appId) {
     if (!Auth.isLoggedIn()) {
@@ -955,6 +936,7 @@ async function handleDownload(appId) {
     try {
         showNotification('📥 Preparing download...', 'info');
         
+        // Get app details first
         const result = await api.get(`/apps/${appId}`, authToken);
         const app = result.data;
         
@@ -963,12 +945,13 @@ async function handleDownload(appId) {
             return;
         }
         
-        // Check if APK exists
-        const downloadUrl = `${CONFIG.API_URL}/apps/download/${app.packageName || appId}`;
-        console.log(`📥 Downloading from: ${downloadUrl}`);
+        // Use package name for download
+        const packageName = app.packageName;
+        console.log(`📥 Downloading: ${app.name} (${packageName})`);
         
-        // Open in new tab
+        const downloadUrl = `${CONFIG.API_URL}/apps/download/${packageName}`;
         window.open(downloadUrl, '_blank');
+        
         showNotification(`✅ Downloading ${app.name}...`, 'success');
         
     } catch (error) {
@@ -991,6 +974,16 @@ async function handleFavorite(btn, appId) {
         const result = await api.post(`/apps/${appId}/favorite`, {}, authToken);
         if (result.success) {
             btn.classList.toggle('active');
+            // Update button text if in detail view
+            if (btn.textContent.includes('Add to Favorites')) {
+                btn.textContent = '❤️ Remove from Favorites';
+                btn.style.background = '#fee2e2';
+                btn.style.color = '#ef4444';
+            } else if (btn.textContent.includes('Remove from Favorites')) {
+                btn.textContent = '❤️ Add to Favorites';
+                btn.style.background = '#f3f4f6';
+                btn.style.color = '#6b7280';
+            }
             showNotification('❤️ Favorites updated!', 'success');
             await Auth.loadUser();
         }
