@@ -1,7 +1,7 @@
 {
   "name": "alpha-apk-store",
   "version": "1.0.0",
-  "description": "Alpha APK Store - Real APK Generator",
+  "description": "Alpha APK Store - ZIP Method APK Generator",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -18,9 +18,7 @@
     "compression": "^1.7.4",
     "multer": "^1.4.5-lts.1",
     "fs-extra": "^11.1.1",
-    "archiver": "^5.3.1",
-    "child_process": "^1.0.2",
-    "axios": "^1.4.0"
+    "archiver": "^5.3.1"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"
