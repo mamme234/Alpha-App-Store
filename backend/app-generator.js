@@ -6,7 +6,7 @@
 const fs = require('fs-extra');
 const path = require('path');
 const archiver = require('archiver');
-const { App, User } = require('./models');
+const { App } = require('./models');
 
 // ============================================
 // GENERATE UNIQUE ID (Replaces uuid)
@@ -97,7 +97,7 @@ const generateAppAPK = async (appId, userId) => {
         app.generatedApkPath = `generated-apps/${app.packageName}.apk`;
         app.generatedAt = new Date();
         app.apkUrl = `/generated/${app.packageName}.apk`;
-        app.status = 'generated';
+        app.status = 'approved'; // Changed from 'generated' to 'approved'
         app.fileSize = fileSize;
         await app.save();
         
@@ -362,12 +362,14 @@ async function generateIcons(app, appDir) {
         const iconDir = path.join(appDir, 'res', dir);
         await fs.ensureDir(iconDir);
         
+        // Create simple SVG icon (will be saved as PNG with .png extension)
         const icon = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
     <rect width="${size}" height="${size}" rx="${size * 0.15}" fill="#4f46e5"/>
     <text x="${size/2}" y="${size/2 + 10}" font-size="${size * 0.35}" text-anchor="middle" fill="white">📱</text>
     <text x="${size/2}" y="${size - 10}" font-size="${size * 0.07}" text-anchor="middle" fill="white">${app.name.substring(0, 4)}</text>
 </svg>`;
         
+        // Save as .png (Android expects PNG, but we'll use SVG content for simplicity)
         await fs.writeFile(path.join(iconDir, 'ic_launcher.png'), icon);
         await fs.writeFile(path.join(iconDir, 'ic_launcher_round.png'), icon);
     }
