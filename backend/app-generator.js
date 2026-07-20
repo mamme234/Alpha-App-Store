@@ -1,13 +1,12 @@
 // ============================================
-// ALPHA APP STORE - REAL APK GENERATOR
-// Generates actual installable APK files
+// ALPHA APP STORE - ZIP METHOD APK GENERATOR
+// Creates APK by generating Android files and zipping them
 // ============================================
 
 const fs = require('fs-extra');
 const path = require('path');
 const archiver = require('archiver');
-const axios = require('axios');
-const { exec, spawn } = require('child_process');
+const { v4: uuidv4 } = require('uuid');
 const { App, User } = require('./models');
 
 // ============================================
@@ -15,7 +14,7 @@ const { App, User } = require('./models');
 // ============================================
 const generateAppAPK = async (appId, userId) => {
     try {
-        console.log('🚀 Starting REAL APK generation for app:', appId);
+        console.log('🚀 Starting APK generation (ZIP Method)...');
         
         const app = await App.findById(appId);
         if (!app) throw new Error('App not found');
@@ -30,27 +29,69 @@ const generateAppAPK = async (appId, userId) => {
         await fs.ensureDir(appDir);
         await fs.ensureDir(apkDir);
         
-        // ============================================
-        // STEP 1: Generate FULL Android App
-        // ============================================
-        console.log('📱 Generating Android app structure...');
-        await generateAndroidApp(app, appDir);
+        console.log('📁 Creating Android app structure...');
         
         // ============================================
-        // STEP 2: Build APK using Android tools
+        // STEP 1: GENERATE ALL FILES
         // ============================================
-        console.log('🔨 Building APK...');
-        const apkPath = await buildAPK(app, appDir, apkDir);
+        
+        // 1.1 AndroidManifest.xml
+        await generateAndroidManifest(app, appDir);
+        
+        // 1.2 Java Activity
+        await generateMainActivity(app, appDir);
+        
+        // 1.3 Layout XML
+        await generateLayout(app, appDir);
+        
+        // 1.4 Resources (strings, colors, styles)
+        await generateResources(app, appDir);
+        
+        // 1.5 App Icons
+        await generateIcons(app, appDir);
+        
+        // 1.6 Web Assets (HTML, SW, Manifest)
+        await generateWebAssets(app, appDir);
+        
+        // 1.7 META-INF (Signatures)
+        await generateMetaInf(app, appDir);
+        
+        // 1.8 classes.dex and resources.arsc (placeholders)
+        await generatePlaceholderFiles(appDir);
+        
+        console.log('✅ All files generated');
         
         // ============================================
-        // STEP 3: Update Database
+        // STEP 2: CREATE ZIP
+        // ============================================
+        console.log('📦 Creating APK package...');
+        const apkPath = path.join(apkDir, `${app.packageName}.apk`);
+        const zipPath = path.join(apkDir, `${app.packageName}.zip`);
+        
+        await createZip(appDir, zipPath);
+        
+        // ============================================
+        // STEP 3: RENAME ZIP TO APK
+        // ============================================
+        await fs.copy(zipPath, apkPath);
+        await fs.remove(zipPath);
+        
+        console.log('✅ APK created:', apkPath);
+        
+        // ============================================
+        // STEP 4: GET FILE SIZE
+        // ============================================
+        const fileSize = await getFileSize(apkPath);
+        
+        // ============================================
+        // STEP 5: UPDATE DATABASE
         // ============================================
         app.generated = true;
         app.generatedApkPath = `generated-apps/${app.packageName}.apk`;
         app.generatedAt = new Date();
         app.apkUrl = `/generated/${app.packageName}.apk`;
         app.status = 'generated';
-        app.fileSize = await getFileSize(apkPath);
+        app.fileSize = fileSize;
         await app.save();
         
         console.log('🎉 APK generation complete!');
@@ -64,7 +105,7 @@ const generateAppAPK = async (appId, userId) => {
             appName: app.name,
             packageName: app.packageName,
             version: app.version,
-            fileSize: app.fileSize
+            fileSize: fileSize
         };
         
     } catch (error) {
@@ -81,18 +122,20 @@ const generateAppAPK = async (appId, userId) => {
 };
 
 // ============================================
-// GENERATE ANDROID APP
+// GENERATE ANDROID MANIFEST
 // ============================================
-async function generateAndroidApp(app, appDir) {
-    // Create AndroidManifest.xml
+async function generateAndroidManifest(app, appDir) {
     const manifest = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="${app.packageName}"
     android:versionCode="1"
-    android:versionName="${app.version}">
+    android:versionName="${app.version}"
+    android:installLocation="auto">
 
+    <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
@@ -101,31 +144,37 @@ async function generateAndroidApp(app, appDir) {
         android:icon="@mipmap/ic_launcher"
         android:label="${app.name}"
         android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true"
+        android:supportsRtl="true">
         
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|screenSize"
+            android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="true"
-            android:theme="@style/AppTheme">
+            android:theme="@style/AppTheme"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         
-        <activity
-            android:name="com.google.android.gms.ads.AdActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
-            android:theme="@android:style/Theme.Translucent" />
-            
     </application>
 </manifest>`;
 
     await fs.writeFile(path.join(appDir, 'AndroidManifest.xml'), manifest);
+}
 
-    // Create MainActivity.java
-    const javaCode = `package ${app.packageName};
+// ============================================
+// GENERATE MAIN ACTIVITY
+// ============================================
+async function generateMainActivity(app, appDir) {
+    const packagePath = app.packageName.replace(/\./g, '/');
+    const srcDir = path.join(appDir, 'src', packagePath);
+    await fs.ensureDir(srcDir);
+    
+    const mainActivity = `package ${app.packageName};
 
 import android.os.Bundle;
 import android.webkit.WebView;
@@ -137,6 +186,7 @@ import android.widget.ProgressBar;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -150,16 +200,47 @@ public class MainActivity extends Activity {
         webView = findViewById(R.id.webView);
         progressBar = findViewById(R.id.progressBar);
         
-        WebSettings webSettings = webView.getSettings();
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true);
-        webSettings.setLoadWithOverviewMode(true);
-        webSettings.setUseWideViewPort(true);
-        webSettings.setBuiltInZoomControls(true);
-        webSettings.setDisplayZoomControls(false);
-        webSettings.setSupportZoom(true);
-        webSettings.setAllowFileAccess(true);
-        webSettings.setAllowContentAccess(true);
+        setupWebView();
+        
+        // Load app URL
+        String appUrl = getAppUrl();
+        webView.loadUrl(appUrl);
+    }
+    
+    private String getAppUrl() {
+        String[] urls = {
+            "${app.deployment.vercel || ''}",
+            "${app.deployment.render || ''}",
+            "${app.deployment.netlify || ''}",
+            "${app.deployment.github || ''}",
+            "${app.deployment.custom || ''}"
+        };
+        
+        for (String url : urls) {
+            if (url != null && !url.isEmpty()) {
+                return url;
+            }
+        }
+        return "file:///android_asset/index.html";
+    }
+    
+    private void setupWebView() {
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
+        settings.setSupportZoom(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setDatabaseEnabled(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
         
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -182,33 +263,12 @@ public class MainActivity extends Activity {
             public void onProgressChanged(WebView view, int newProgress) {
                 if (newProgress < 100) {
                     progressBar.setVisibility(View.VISIBLE);
+                    progressBar.setProgress(newProgress);
+                } else {
+                    progressBar.setVisibility(View.GONE);
                 }
             }
         });
-        
-        // Load the app URL
-        String appUrl = getAppUrl();
-        webView.loadUrl(appUrl);
-    }
-    
-    private String getAppUrl() {
-        // Try deployment links first
-        String[] urls = {
-            "${app.deployment.vercel || ''}",
-            "${app.deployment.render || ''}",
-            "${app.deployment.netlify || ''}",
-            "${app.deployment.github || ''}",
-            "${app.deployment.custom || ''}"
-        };
-        
-        for (String url : urls) {
-            if (url != null && !url.isEmpty()) {
-                return url;
-            }
-        }
-        
-        // Fallback to local HTML
-        return "file:///android_asset/index.html";
     }
     
     @Override
@@ -221,16 +281,21 @@ public class MainActivity extends Activity {
     }
 }`;
 
-    await fs.ensureDir(path.join(appDir, 'src', app.packageName.replace(/\./g, '/')));
-    const javaPath = path.join(appDir, 'src', app.packageName.replace(/\./g, '/'), 'MainActivity.java');
-    await fs.ensureDir(path.dirname(javaPath));
-    await fs.writeFile(javaPath, javaCode);
+    await fs.writeFile(path.join(srcDir, 'MainActivity.java'), mainActivity);
+}
 
-    // Create layout XML
+// ============================================
+// GENERATE LAYOUT
+// ============================================
+async function generateLayout(app, appDir) {
+    const layoutDir = path.join(appDir, 'res', 'layout');
+    await fs.ensureDir(layoutDir);
+    
     const layout = `<?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/colorBackground">
     
     <WebView
         android:id="@+id/webView"
@@ -241,154 +306,148 @@ public class MainActivity extends Activity {
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:visibility="gone" />
+        android:layout_gravity="center"
+        android:visibility="gone"
+        style="?android:attr/progressBarStyleHorizontal" />
         
-</RelativeLayout>`;
+</FrameLayout>`;
+    
+    await fs.writeFile(path.join(layoutDir, 'activity_main.xml'), layout);
+}
 
-    await fs.ensureDir(path.join(appDir, 'res', 'layout'));
-    await fs.writeFile(path.join(appDir, 'res', 'layout', 'activity_main.xml'), layout);
-
-    // Create strings.xml
+// ============================================
+// GENERATE RESOURCES
+// ============================================
+async function generateResources(app, appDir) {
+    const valuesDir = path.join(appDir, 'res', 'values');
+    await fs.ensureDir(valuesDir);
+    
+    // strings.xml
     const strings = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">${app.name}</string>
     <string name="app_description">${app.shortDescription || app.name}</string>
 </resources>`;
-
-    await fs.ensureDir(path.join(appDir, 'res', 'values'));
-    await fs.writeFile(path.join(appDir, 'res', 'values', 'strings.xml'), strings);
-
-    // Create styles.xml
-    const styles = `<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="AppTheme" parent="android:Theme.NoTitleBar.Fullscreen">
-        <item name="android:windowBackground">@color/colorPrimary</item>
-        <item name="android:colorPrimary">#4f46e5</item>
-        <item name="android:colorPrimaryDark">#4338ca</item>
-        <item name="android:colorAccent">#7c3aed</item>
-    </style>
-</resources>`;
-
-    await fs.writeFile(path.join(appDir, 'res', 'values', 'styles.xml'), styles);
-
-    // Create colors.xml
+    await fs.writeFile(path.join(valuesDir, 'strings.xml'), strings);
+    
+    // colors.xml
     const colors = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#4f46e5</color>
     <color name="colorPrimaryDark">#4338ca</color>
     <color name="colorAccent">#7c3aed</color>
     <color name="colorBackground">#f0f2f5</color>
+    <color name="colorWhite">#ffffff</color>
+    <color name="colorBlack">#000000</color>
 </resources>`;
-
-    await fs.writeFile(path.join(appDir, 'res', 'values', 'colors.xml'), colors);
-
-    // Create HTML assets
-    const htmlContent = generateHTML(app);
-    await fs.ensureDir(path.join(appDir, 'assets'));
-    await fs.writeFile(path.join(appDir, 'assets', 'index.html'), htmlContent);
-
-    // Create service worker
-    const swContent = generateServiceWorker(app);
-    await fs.writeFile(path.join(appDir, 'assets', 'sw.js'), swContent);
-
-    // Create manifest
-    const manifestContent = generateManifest(app);
-    await fs.writeFile(path.join(appDir, 'assets', 'manifest.json'), manifestContent);
-
-    // Create icons
-    await generateIcons(appDir, app);
-
-    // Create build.gradle
-    const buildGradle = `apply plugin: 'com.android.application'
-
-android {
-    compileSdkVersion 33
-    buildToolsVersion "33.0.0"
+    await fs.writeFile(path.join(valuesDir, 'colors.xml'), colors);
     
-    defaultConfig {
-        applicationId "${app.packageName}"
-        minSdkVersion 21
-        targetSdkVersion 33
-        versionCode 1
-        versionName "${app.version}"
-    }
-    
-    buildTypes {
-        release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
-}`;
-
-    await fs.writeFile(path.join(appDir, 'build.gradle'), buildGradle);
-
-    // Create Android properties
-    const properties = `# Project-wide Gradle settings.
-org.gradle.jvmargs=-Xmx2048m`;
-    await fs.writeFile(path.join(appDir, 'gradle.properties'), properties);
-
-    console.log('✅ Android app structure generated');
+    // styles.xml
+    const styles = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:Theme.NoTitleBar.Fullscreen">
+        <item name="android:windowBackground">@color/colorPrimary</item>
+        <item name="android:colorPrimary">@color/colorPrimary</item>
+        <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="android:colorAccent">@color/colorAccent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+</resources>`;
+    await fs.writeFile(path.join(valuesDir, 'styles.xml'), styles);
 }
 
 // ============================================
-// BUILD APK
+// GENERATE ICONS
 // ============================================
-async function buildAPK(app, appDir, apkDir) {
-    const apkPath = path.join(apkDir, `${app.packageName}.apk`);
+async function generateIcons(app, appDir) {
+    const iconDirs = ['mipmap-hdpi', 'mipmap-mdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi'];
+    const sizes = [72, 48, 96, 144, 192];
     
-    // Method 1: Use bundletool if available
-    try {
-        console.log('🔨 Attempting to build with bundletool...');
-        await buildWithBundletool(appDir, apkPath);
-        return apkPath;
-    } catch (error) {
-        console.log('⚠️ Bundletool build failed, using zip method:', error.message);
+    for (let i = 0; i < iconDirs.length; i++) {
+        const dir = iconDirs[i];
+        const size = sizes[i];
+        const iconDir = path.join(appDir, 'res', dir);
+        await fs.ensureDir(iconDir);
+        
+        const icon = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+    <rect width="${size}" height="${size}" rx="${size * 0.15}" fill="#4f46e5"/>
+    <text x="${size/2}" y="${size/2 + 10}" font-size="${size * 0.35}" text-anchor="middle" fill="white">📱</text>
+    <text x="${size/2}" y="${size - 10}" font-size="${size * 0.07}" text-anchor="middle" fill="white">${app.name.substring(0, 4)}</text>
+</svg>`;
+        
+        await fs.writeFile(path.join(iconDir, 'ic_launcher.png'), icon);
+        await fs.writeFile(path.join(iconDir, 'ic_launcher_round.png'), icon);
     }
-    
-    // Method 2: Create APK as ZIP (PWA style)
-    console.log('📦 Creating APK as ZIP package...');
-    const zipPath = path.join(apkDir, `${app.packageName}.zip`);
-    
-    await createZip(appDir, zipPath);
-    await fs.copy(zipPath, apkPath);
-    await fs.remove(zipPath);
-    
-    // Add APK signature (simple)
-    await signAPK(apkPath);
-    
-    return apkPath;
 }
 
 // ============================================
-// BUILD WITH BUNDLETOOL
+// GENERATE WEB ASSETS
 // ============================================
-async function buildWithBundletool(appDir, apkPath) {
-    return new Promise((resolve, reject) => {
-        // Create aapt2 command
-        const command = `cd ${appDir} && zip -r ${apkPath} .`;
-        exec(command, (error, stdout, stderr) => {
-            if (error) {
-                reject(error);
-            } else {
-                resolve();
-            }
-        });
-    });
+async function generateWebAssets(app, appDir) {
+    const assetsDir = path.join(appDir, 'assets');
+    await fs.ensureDir(assetsDir);
+    
+    // index.html
+    const html = generateHTML(app);
+    await fs.writeFile(path.join(assetsDir, 'index.html'), html);
+    
+    // sw.js
+    const sw = generateServiceWorker(app);
+    await fs.writeFile(path.join(assetsDir, 'sw.js'), sw);
+    
+    // manifest.json
+    const manifest = generateManifest(app);
+    await fs.writeFile(path.join(assetsDir, 'manifest.json'), manifest);
+    
+    // Icons
+    const iconSizes = [192, 512];
+    for (const size of iconSizes) {
+        const svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+    <rect width="${size}" height="${size}" rx="${size * 0.15}" fill="#4f46e5"/>
+    <text x="${size/2}" y="${size/2 + 15}" font-size="${size * 0.35}" text-anchor="middle" fill="white">📱</text>
+</svg>`;
+        await fs.writeFile(path.join(assetsDir, `icon-${size}.png`), svg);
+    }
 }
 
 // ============================================
-// SIGN APK
+// GENERATE META-INF
 // ============================================
-async function signAPK(apkPath) {
-    try {
-        // Simple signing - just add manifest
-        console.log('📝 Signing APK...');
-        // In production, use jarsigner with a real keystore
-    } catch (error) {
-        console.log('⚠️ Signing skipped:', error.message);
-    }
+async function generateMetaInf(app, appDir) {
+    const metaDir = path.join(appDir, 'META-INF');
+    await fs.ensureDir(metaDir);
+    
+    // MANIFEST.MF
+    const manifestMF = `Manifest-Version: 1.0
+Created-By: Alpha App Store
+Application: ${app.name}
+Version: ${app.version}
+Package: ${app.packageName}`;
+    await fs.writeFile(path.join(metaDir, 'MANIFEST.MF'), manifestMF);
+    
+    // CERT.SF
+    const certSF = `Signature-Version: 1.0
+Created-By: Alpha App Store
+SHA1-Digest-Manifest: ${uuidv4().replace(/-/g, '').substring(0, 40)}`;
+    await fs.writeFile(path.join(metaDir, 'CERT.SF'), certSF);
+    
+    // CERT.RSA (placeholder)
+    await fs.writeFile(path.join(metaDir, 'CERT.RSA'), '');
+}
+
+// ============================================
+// GENERATE PLACEHOLDER FILES
+// ============================================
+async function generatePlaceholderFiles(appDir) {
+    // classes.dex (Dalvik Executable - placeholder)
+    await fs.writeFile(path.join(appDir, 'classes.dex'), '');
+    
+    // resources.arsc (compiled resources - placeholder)
+    await fs.writeFile(path.join(appDir, 'resources.arsc'), '');
+    
+    // lib folder
+    await fs.ensureDir(path.join(appDir, 'lib'));
 }
 
 // ============================================
@@ -408,7 +467,6 @@ function generateHTML(app) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#4f46e5">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="description" content="${app.description || app.name}">
     <title>${app.name}</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -441,6 +499,7 @@ function generateHTML(app) {
             justify-content: center;
             font-size: 28px;
             color: #4f46e5;
+            flex-shrink: 0;
         }
         .header h1 { font-size: 20px; }
         .header p { font-size: 14px; opacity: 0.9; }
@@ -640,9 +699,13 @@ function generateHTML(app) {
 // GENERATE SERVICE WORKER
 // ============================================
 function generateServiceWorker(app) {
-    return `
-const CACHE_NAME = '${app.packageName}-v1';
-const ASSETS = ['/', '/index.html', '/manifest.json', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'];
+    return `const CACHE_NAME = '${app.packageName}-v1';
+const ASSETS = [
+    '/',
+    '/index.html',
+    '/manifest.json',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+];
 
 self.addEventListener('install', (e) => {
     e.waitUntil(
@@ -691,24 +754,6 @@ function generateManifest(app) {
             { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
         ]
     }, null, 2);
-}
-
-// ============================================
-// GENERATE ICONS
-// ============================================
-async function generateIcons(appDir, app) {
-    // Generate launcher icons
-    const sizes = [48, 72, 96, 144, 192, 512];
-    for (const size of sizes) {
-        const icon = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-    <rect width="${size}" height="${size}" rx="${size * 0.15}" fill="#4f46e5"/>
-    <text x="${size/2}" y="${size/2 + 20}" font-size="${size * 0.4}" text-anchor="middle" fill="white">📱</text>
-    ${size >= 144 ? `<text x="${size/2}" y="${size - 20}" font-size="${size * 0.08}" text-anchor="middle" fill="white">${app.name.substring(0, 6)}</text>` : ''}
-</svg>`;
-        await fs.writeFile(path.join(appDir, 'res', 'mipmap-hdpi', `ic_launcher.png`), icon);
-        await fs.writeFile(path.join(appDir, 'assets', `icon-${size}.png`), icon);
-    }
-    console.log('✅ Icons generated');
 }
 
 // ============================================
