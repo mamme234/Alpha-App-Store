@@ -15,18 +15,18 @@ const PORT = process.env.PORT || 5000;
     fs.ensureDirSync(path.join(__dirname, dir));
 });
 
-// ===== CORS (FIXED) =====
+// ===== CORS (FIXED FOR VERCEl) =====
 app.use(cors({
     origin: [
         'https://alpha-app-store.vercel.app',
-        'https://your-vercel-app.vercel.app', // Replace with your actual Vercel URL
         'http://localhost:3000',
         'http://localhost:5000',
-        'http://127.0.0.1:5500'
+        'http://127.0.0.1:5500',
+        'https://alpha-app-store-git-main-mamme234.vercel.app' // Add this if your Vercel URL has this format
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
 // ===== MIDDLEWARE =====
@@ -50,7 +50,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/alpha-sto
 const routes = require('./routes');
 app.use('/api', routes);
 
-// ===== ROOT ROUTE (FIXED 404) =====
+// ===== ROOT ROUTE =====
 app.get('/', (req, res) => {
     res.status(200).json({
         name: 'Alpha App Store API',
@@ -65,7 +65,7 @@ app.get('/', (req, res) => {
     });
 });
 
-// ===== HEALTH CHECK (IMPROVED) =====
+// ===== HEALTH CHECK =====
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'OK',
