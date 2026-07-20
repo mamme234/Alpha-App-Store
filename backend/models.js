@@ -10,10 +10,11 @@ const UserSchema = new mongoose.Schema({
   role: { type: String, enum: ['user', 'developer', 'admin'], default: 'user' },
   isVerified: { type: Boolean, default: false },
   favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'App' }],
-  downloads: [{
-    app: { type: mongoose.Schema.Types.ObjectId, ref: 'App' },
-    downloadedAt: { type: Date, default: Date.now }
-  }]
+  developerProfile: {
+    companyName: String,
+    companyWebsite: String,
+    verified: { type: Boolean, default: false }
+  }
 }, { timestamps: true });
 
 UserSchema.pre('save', async function(next) {
@@ -37,36 +38,34 @@ const AppSchema = new mongoose.Schema({
   category: { 
     type: String, 
     required: true, 
-    enum: ['games','education','finance','social','tools','productivity','health','music'] 
+    enum: ['games','education','finance','social','tools','productivity','health','music','entertainment','news']
   },
-  version: { type: String, required: true },
+  version: { type: String, required: true, default: '1.0.0' },
   fileSize: { type: String, required: true },
   fileSizeBytes: { type: Number, required: true },
-  minAndroidVersion: { type: String, required: true },
+  minAndroidVersion: { type: String, required: true, default: '5.0' },
   apkUrl: { type: String, required: true },
   developer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  deployment: {
+    vercel: { type: String, default: '' },
+    render: { type: String, default: '' },
+    netlify: { type: String, default: '' },
+    github: { type: String, default: '' },
+    custom: { type: String, default: '' }
+  },
+  generated: { type: Boolean, default: false },
+  generatedApkPath: { type: String, default: '' },
   downloads: { type: Number, default: 0 },
   rating: { type: Number, default: 0, min: 0, max: 5 },
   reviewCount: { type: Number, default: 0 },
   featured: { type: Boolean, default: false },
   trending: { type: Boolean, default: false },
-  status: { type: String, enum: ['pending','approved','rejected'], default: 'pending' },
+  status: { type: String, enum: ['pending','approved','rejected','generated'], default: 'pending' },
   permissions: [String],
   features: [String]
 }, { timestamps: true });
 
-// ===== REVIEW MODEL =====
-const ReviewSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  app: { type: mongoose.Schema.Types.ObjectId, ref: 'App', required: true },
-  rating: { type: Number, required: true, min: 1, max: 5 },
-  title: { type: String, required: true },
-  content: { type: String, required: true },
-  helpfulCount: { type: Number, default: 0 }
-}, { timestamps: true });
-
 const User = mongoose.model('User', UserSchema);
 const App = mongoose.model('App', AppSchema);
-const Review = mongoose.model('Review', ReviewSchema);
 
-module.exports = { User, App, Review };
+module.exports = { User, App };
