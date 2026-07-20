@@ -2,33 +2,120 @@
 // ALPHA APP STORE - COMPLETE JAVASCRIPT
 // ============================================
 
-// ===== API CONFIG =====
-const API_URL = window.location.origin + 'https://alpha-app-store.onrender.com/api';
+// ===== CONFIGURATION =====
+const CONFIG = {
+    // Render Deployment URL - Replace with your actual Render URL
+    RENDER_URL: 'https://alpha-app-store.onrender.com',
+    
+    // API URL - Use Render URL in production, localhost in development
+    API_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:5000/api'
+        : 'https://alpha-app-store.onrender.com/api',
+    
+    // Frontend URL
+    FRONTEND_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:3000'
+        : 'https://alpha-app-store.onrender.com',
+    
+    // App Name
+    APP_NAME: 'Alpha App Store',
+    
+    // Version
+    VERSION: '1.0.0'
+};
+
+// ============================================
+// API CONFIGURATION
+// ============================================
+const API_URL = CONFIG.API_URL;
+
+console.log(`🚀 ${CONFIG.APP_NAME} v${CONFIG.VERSION}`);
+console.log(`📍 API URL: ${API_URL}`);
+console.log(`📍 Frontend URL: ${CONFIG.FRONTEND_URL}`);
 
 const api = {
     get: async (endpoint, token = null) => {
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
-        const res = await fetch(`${API_URL}${endpoint}`, { headers });
-        return res.json();
+        try {
+            const res = await fetch(`${API_URL}${endpoint}`, { headers });
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+        } catch (error) {
+            console.error('API GET Error:', error);
+            showNotification('Failed to connect to server', 'error');
+            throw error;
+        }
     },
     post: async (endpoint, data, token = null) => {
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
-        const res = await fetch(`${API_URL}${endpoint}`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(data)
-        });
-        return res.json();
+        try {
+            const res = await fetch(`${API_URL}${endpoint}`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(data)
+            });
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+        } catch (error) {
+            console.error('API POST Error:', error);
+            showNotification('Failed to connect to server', 'error');
+            throw error;
+        }
+    },
+    put: async (endpoint, data, token = null) => {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        try {
+            const res = await fetch(`${API_URL}${endpoint}`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify(data)
+            });
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+        } catch (error) {
+            console.error('API PUT Error:', error);
+            showNotification('Failed to connect to server', 'error');
+            throw error;
+        }
+    },
+    delete: async (endpoint, token = null) => {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        try {
+            const res = await fetch(`${API_URL}${endpoint}`, {
+                method: 'DELETE',
+                headers
+            });
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+        } catch (error) {
+            console.error('API DELETE Error:', error);
+            showNotification('Failed to connect to server', 'error');
+            throw error;
+        }
     }
 };
 
-// ===== AUTH STATE =====
+// ============================================
+// AUTH STATE
+// ============================================
 let currentUser = null;
 let authToken = localStorage.getItem('token');
 
-// ===== AUTH FUNCTIONS =====
+// ============================================
+// AUTH FUNCTIONS
+// ============================================
 const Auth = {
     getUser: () => currentUser,
     getToken: () => authToken,
@@ -96,15 +183,41 @@ const Auth = {
             }
         } catch (error) {
             console.error('Failed to load user:', error);
+            // If token is invalid, clear it
+            if (error.message.includes('401')) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                authToken = null;
+            }
         }
         updateUI();
+    },
+
+    // Check server health
+    checkHealth: async () => {
+        try {
+            const res = await fetch(`${CONFIG.RENDER_URL}/health`);
+            if (res.ok) {
+                const data = await res.json();
+                console.log('✅ Server is healthy:', data);
+                return true;
+            }
+            console.log('⚠️ Server health check failed');
+            return false;
+        } catch (error) {
+            console.error('❌ Server health check error:', error);
+            return false;
+        }
     }
 };
 
-// ===== UPDATE UI =====
+// ============================================
+// UPDATE UI
+// ============================================
 function updateUI() {
-    const authBtn = document.querySelector('.nav-links .btn-primary');
-    const submitBtn = document.querySelector('.nav-submit');
+    const authBtn = document.getElementById('navAuth');
+    const submitBtn = document.getElementById('navSubmit');
+    const favBtn = document.getElementById('navFavorites');
     
     if (Auth.isLoggedIn()) {
         authBtn.innerHTML = `<i class="fas fa-user-circle"></i> ${currentUser?.username || 'User'}`;
@@ -112,12 +225,14 @@ function updateUI() {
         authBtn.style.color = '#4f46e5';
         authBtn.style.background = 'none';
         if (submitBtn) submitBtn.style.display = 'inline';
+        if (favBtn) favBtn.style.display = 'inline';
     } else {
         authBtn.innerHTML = `<i class="fas fa-user"></i> Login`;
         authBtn.className = 'btn-primary';
         authBtn.style.color = '';
         authBtn.style.background = '';
         if (submitBtn) submitBtn.style.display = 'none';
+        if (favBtn) favBtn.style.display = 'none';
     }
 }
 
@@ -129,14 +244,25 @@ function handleAuthClick() {
     }
 }
 
-// ===== NAVIGATION =====
+// ============================================
+// NAVIGATION
+// ============================================
 function navigateTo(page, params = null) {
     const mainContent = document.getElementById('mainContent');
     if (!mainContent) return;
     
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     switch(page) {
         case 'home':
             renderHome(mainContent);
+            break;
+        case 'categories':
+            renderCategories(mainContent);
+            break;
+        case 'app':
+            renderAppDetail(mainContent, params);
             break;
         case 'login':
             renderLogin(mainContent);
@@ -147,65 +273,164 @@ function navigateTo(page, params = null) {
         case 'submit':
             renderSubmit(mainContent);
             break;
+        case 'favorites':
+            renderFavorites(mainContent);
+            break;
+        case 'search':
+            renderSearch(mainContent, params);
+            break;
         default:
             renderHome(mainContent);
     }
 }
 
-// ===== RENDER HOME =====
+// ============================================
+// RENDER HOME
+// ============================================
 function renderHome(container) {
     container.innerHTML = `
         <!-- Hero -->
         <section class="hero">
             <div class="container">
                 <h1>📱 Discover Amazing Apps</h1>
-                <p>Find the best apps for your Android device. Download safely and securely.</p>
+                <p>Find the best Android apps, games, and tools. Download safely and securely.</p>
                 <div class="hero-buttons">
-                    <a href="#" class="btn-primary" onclick="navigateTo('submit')">Submit Your App</a>
+                    <a href="#" class="btn-primary" onclick="navigateTo('submit')"><i class="fas fa-upload"></i> Submit Your App</a>
+                    <a href="#" class="btn-secondary" onclick="navigateTo('categories')"><i class="fas fa-th-large"></i> Browse Categories</a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <div class="stat-number">2,500+</div>
+                        <div class="stat-label">Apps Available</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">1M+</div>
+                        <div class="stat-label">Total Downloads</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">500+</div>
+                        <div class="stat-label">Developers</div>
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- Categories -->
-        <section class="categories">
-            <div class="container">
-                <h2 class="section-title">📂 Categories</h2>
-                <div class="categories-grid">
-                    ${['Games','Education','Finance','Social','Tools','Productivity','Health','Music'].map(cat => `
-                        <div class="category-card" onclick="showNotification('🔍 ${cat} category', 'info')">
-                            <i class="fas fa-${getCategoryIcon(cat)}"></i>
-                            <span>${cat}</span>
-                        </div>
-                    `).join('')}
-                </div>
+        <section>
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-th-large"></i> Categories</h2>
+                <a href="#" class="section-link" onclick="navigateTo('categories')">View All →</a>
+            </div>
+            <div class="categories-grid">
+                ${renderCategoriesGrid()}
             </div>
         </section>
 
         <!-- Featured Apps -->
-        <section class="featured-apps">
-            <div class="container">
-                <h2 class="section-title">⭐ Featured Apps</h2>
-                <div class="app-grid" id="appGrid">
-                    ${renderAppCards()}
+        <section>
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-star"></i> Featured Apps</h2>
+                <a href="#" class="section-link" onclick="showNotification('All featured apps', 'info')">View All →</a>
+            </div>
+            <div class="app-grid">
+                ${renderAppCards('featured')}
+            </div>
+        </section>
+
+        <!-- Trending Apps -->
+        <section>
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-fire"></i> Trending Now</h2>
+                <a href="#" class="section-link" onclick="showNotification('All trending apps', 'info')">View All →</a>
+            </div>
+            <div class="app-grid">
+                ${renderAppCards('trending')}
+            </div>
+        </section>
+
+        <!-- Submit Banner -->
+        <section class="submit-banner">
+            <div class="submit-content">
+                <h2>🚀 Submit Your App</h2>
+                <p>Share your app with millions of users. Get more downloads, reviews, and grow your audience.</p>
+                <a href="#" class="btn-primary" onclick="navigateTo('submit')"><i class="fas fa-upload"></i> Submit Now</a>
+            </div>
+            <div class="submit-stats">
+                <div class="stat">
+                    <span class="stat-number">2,500+</span>
+                    <span class="stat-label">Apps Available</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">1M+</span>
+                    <span class="stat-label">Total Downloads</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">500+</span>
+                    <span class="stat-label">Developers</span>
                 </div>
             </div>
         </section>
     `;
 }
 
-// ===== RENDER APP CARDS =====
-function renderAppCards() {
-    const apps = [
-        { name: 'Alpha Games', desc: 'Best gaming experience', rating: 4.8, downloads: '50K', category: 'Games', color: '4f46e5' },
-        { name: 'Learn Pro', desc: 'Learn anything, anywhere', rating: 4.6, downloads: '35K', category: 'Education', color: '7c3aed' },
-        { name: 'Finance Tracker', desc: 'Track your expenses', rating: 4.7, downloads: '28K', category: 'Finance', color: '059669' },
-        { name: 'Social Connect', desc: 'Connect worldwide', rating: 4.5, downloads: '80K', category: 'Social', color: 'd97706' }
-    ];
+// ============================================
+// RENDER CATEGORIES
+// ============================================
+function renderCategories(container) {
+    container.innerHTML = `
+        <section>
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-th-large"></i> All Categories</h2>
+            </div>
+            <div class="categories-grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
+                ${renderCategoriesGrid()}
+            </div>
+        </section>
+    `;
+}
 
+function renderCategoriesGrid() {
+    const categories = [
+        { name: 'Games', icon: 'gamepad' },
+        { name: 'Education', icon: 'graduation-cap' },
+        { name: 'Finance', icon: 'coins' },
+        { name: 'Social', icon: 'users' },
+        { name: 'Tools', icon: 'tools' },
+        { name: 'Productivity', icon: 'chart-line' },
+        { name: 'Health', icon: 'heartbeat' },
+        { name: 'Music', icon: 'music' },
+        { name: 'Entertainment', icon: 'film' },
+        { name: 'News', icon: 'newspaper' },
+        { name: 'Shopping', icon: 'shopping-cart' },
+        { name: 'Travel', icon: 'plane' },
+        { name: 'Sports', icon: 'futbol' },
+        { name: 'Photography', icon: 'camera' },
+        { name: 'Books', icon: 'book' },
+        { name: 'Business', icon: 'briefcase' },
+        { name: 'Lifestyle', icon: 'leaf' },
+        { name: 'Communication', icon: 'comment' }
+    ];
+    
+    return categories.map(cat => `
+        <div class="category-card" onclick="showNotification('🔍 ${cat.name} category', 'info')">
+            <i class="fas fa-${cat.icon}"></i>
+            <span>${cat.name}</span>
+        </div>
+    `).join('');
+}
+
+// ============================================
+// RENDER APP CARDS
+// ============================================
+function renderAppCards(type = 'featured') {
+    const apps = getSampleApps(type);
+    
     return apps.map(app => `
-        <div class="app-card">
+        <div class="app-card" onclick="navigateTo('app', '${app.id}')" style="position:relative;cursor:pointer;">
+            ${type === 'featured' ? '<div class="featured-badge">⭐ Featured</div>' : ''}
+            ${type === 'trending' ? '<div class="trending-badge">🔥 Trending</div>' : ''}
             <div class="app-header">
-                <img src="https://via.placeholder.com/64/${app.color}/ffffff?text=App" alt="${app.name}" class="app-icon">
+                <img src="https://via.placeholder.com/64/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="app-icon">
                 <div class="app-info">
                     <h3 class="app-name">${app.name}</h3>
                     <p class="app-desc">${app.desc}</p>
@@ -216,11 +441,11 @@ function renderAppCards() {
                     </div>
                 </div>
             </div>
-            <div class="app-actions">
-                <button class="btn-download" onclick="handleDownload('${app.name}')">
+            <div class="app-actions" onclick="event.stopPropagation();">
+                <button class="btn-download" onclick="handleDownload('${app.id}')">
                     <i class="fas fa-download"></i> Download
                 </button>
-                <button class="btn-fav" onclick="handleFavorite(this)">
+                <button class="btn-fav ${app.favorited ? 'active' : ''}" onclick="handleFavorite(this, '${app.id}')">
                     <i class="fas fa-heart"></i>
                 </button>
             </div>
@@ -228,7 +453,207 @@ function renderAppCards() {
     `).join('');
 }
 
-// ===== RENDER LOGIN =====
+// ============================================
+// SAMPLE APPS DATA
+// ============================================
+function getSampleApps(type) {
+    const allApps = [
+        { id: '1', name: 'Alpha Games', desc: 'Best gaming experience on Android', rating: '4.8', downloads: '50K', category: 'Games', color: '4f46e5', favorited: false },
+        { id: '2', name: 'Learn Pro', desc: 'Learn anything, anywhere', rating: '4.6', downloads: '35K', category: 'Education', color: '7c3aed', favorited: false },
+        { id: '3', name: 'Finance Tracker', desc: 'Track your expenses easily', rating: '4.7', downloads: '28K', category: 'Finance', color: '059669', favorited: false },
+        { id: '4', name: 'Social Connect', desc: 'Connect with friends worldwide', rating: '4.5', downloads: '80K', category: 'Social', color: 'd97706', favorited: false },
+        { id: '5', name: 'Photo Editor Pro', desc: 'Edit photos like a pro', rating: '4.9', downloads: '120K', category: 'Tools', color: 'dc2626', favorited: false },
+        { id: '6', name: 'Music Player', desc: 'Listen to your favorite music', rating: '4.7', downloads: '95K', category: 'Music', color: '2563eb', favorited: false },
+        { id: '7', name: 'Health Tracker', desc: 'Track your fitness goals', rating: '4.4', downloads: '45K', category: 'Health', color: '16a34a', favorited: false },
+        { id: '8', name: 'Productivity Suite', desc: 'Boost your productivity', rating: '4.3', downloads: '32K', category: 'Productivity', color: '8b5cf6', favorited: false }
+    ];
+    
+    if (type === 'featured') return allApps.slice(0, 4);
+    if (type === 'trending') return allApps.slice(4, 8);
+    return allApps;
+}
+
+// ============================================
+// RENDER APP DETAIL
+// ============================================
+function renderAppDetail(container, appId) {
+    const app = getSampleApps('all').find(a => a.id === appId);
+    if (!app) {
+        container.innerHTML = `<p style="text-align:center;padding:40px;">App not found</p>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="app-detail">
+            <div class="header">
+                <img src="https://via.placeholder.com/120/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="icon">
+                <div class="info">
+                    <h1>${app.name}</h1>
+                    <div class="package">com.alpha.${app.name.toLowerCase().replace(/ /g, '')}</div>
+                    <div class="meta">
+                        <span>📌 Version 1.0.0</span>
+                        <span>📱 Android 5.0+</span>
+                        <span>💾 5MB</span>
+                        <span>⭐ ${app.rating}</span>
+                        <span>⬇️ ${app.downloads}</span>
+                    </div>
+                    <button class="download-btn" onclick="handleDownload('${app.id}')">
+                        <i class="fas fa-download"></i> Download APK
+                    </button>
+                </div>
+            </div>
+            
+            <div class="description">
+                <h2>📖 Description</h2>
+                <p>${app.name} is an amazing app that will change the way you use your Android device. 
+                With a beautiful interface and powerful features, it's the perfect tool for everyone.</p>
+            </div>
+            
+            <div class="features">
+                <h2>✨ Features</h2>
+                <ul>
+                    <li>Beautiful and intuitive user interface</li>
+                    <li>Fast and responsive performance</li>
+                    <li>Regular updates with new features</li>
+                    <li>Secure and privacy-focused</li>
+                    <li>Works offline</li>
+                    <li>Support for all Android versions 5.0+</li>
+                </ul>
+            </div>
+
+            <div style="margin-top:20px;">
+                <h2>🚀 Deployments</h2>
+                <div class="deploy-links">
+                    <a href="#" class="vercel" onclick="showNotification('Opening Vercel deployment', 'info')">⚡ Vercel</a>
+                    <a href="#" class="render" onclick="showNotification('Opening Render deployment', 'info')">🔄 Render</a>
+                    <a href="#" class="netlify" onclick="showNotification('Opening Netlify deployment', 'info')">🚀 Netlify</a>
+                    <a href="#" class="github" onclick="showNotification('Opening GitHub repository', 'info')">🐙 GitHub</a>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================
+// RENDER FAVORITES
+// ============================================
+function renderFavorites(container) {
+    if (!Auth.isLoggedIn()) {
+        container.innerHTML = `
+            <div class="auth-form">
+                <h2>🔐 Please Login</h2>
+                <p style="text-align:center;margin-bottom:20px;">Login to see your favorite apps.</p>
+                <button onclick="navigateTo('login')" class="btn-submit">Login</button>
+            </div>
+        `;
+        return;
+    }
+
+    const favorites = getSampleApps('all').filter(a => a.favorited);
+    
+    container.innerHTML = `
+        <section>
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-heart" style="color:#ef4444;"></i> Your Favorites</h2>
+            </div>
+            ${favorites.length > 0 ? `
+                <div class="app-grid">
+                    ${favorites.map(app => `
+                        <div class="app-card" onclick="navigateTo('app', '${app.id}')" style="cursor:pointer;">
+                            <div class="app-header">
+                                <img src="https://via.placeholder.com/64/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="app-icon">
+                                <div class="app-info">
+                                    <h3 class="app-name">${app.name}</h3>
+                                    <p class="app-desc">${app.desc}</p>
+                                    <div class="app-meta">
+                                        <span class="app-rating">⭐ ${app.rating}</span>
+                                        <span class="app-downloads">⬇️ ${app.downloads}</span>
+                                        <span class="app-category">${app.category}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="app-actions" onclick="event.stopPropagation();">
+                                <button class="btn-download" onclick="handleDownload('${app.id}')">
+                                    <i class="fas fa-download"></i> Download
+                                </button>
+                                <button class="btn-fav active" onclick="handleFavorite(this, '${app.id}')">
+                                    <i class="fas fa-heart"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `
+                <div style="text-align:center;padding:60px 20px;background:white;border-radius:16px;">
+                    <i class="fas fa-heart" style="font-size:48px;color:#e5e7eb;margin-bottom:16px;"></i>
+                    <h3>No favorites yet</h3>
+                    <p style="color:#6b7280;">Start adding apps to your favorites collection!</p>
+                    <button class="btn-primary" style="margin-top:16px;" onclick="navigateTo('home')">Browse Apps</button>
+                </div>
+            `}
+        </section>
+    `;
+}
+
+// ============================================
+// RENDER SEARCH
+// ============================================
+function renderSearch(container, query) {
+    const allApps = getSampleApps('all');
+    const results = allApps.filter(app => 
+        app.name.toLowerCase().includes(query.toLowerCase()) ||
+        app.desc.toLowerCase().includes(query.toLowerCase()) ||
+        app.category.toLowerCase().includes(query.toLowerCase())
+    );
+
+    container.innerHTML = `
+        <section>
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-search"></i> Results for "${query}"</h2>
+                <span style="color:#6b7280;font-size:14px;">${results.length} apps found</span>
+            </div>
+            ${results.length > 0 ? `
+                <div class="app-grid">
+                    ${results.map(app => `
+                        <div class="app-card" onclick="navigateTo('app', '${app.id}')" style="cursor:pointer;">
+                            <div class="app-header">
+                                <img src="https://via.placeholder.com/64/${app.color}/ffffff?text=${app.name.charAt(0)}" alt="${app.name}" class="app-icon">
+                                <div class="app-info">
+                                    <h3 class="app-name">${app.name}</h3>
+                                    <p class="app-desc">${app.desc}</p>
+                                    <div class="app-meta">
+                                        <span class="app-rating">⭐ ${app.rating}</span>
+                                        <span class="app-downloads">⬇️ ${app.downloads}</span>
+                                        <span class="app-category">${app.category}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="app-actions" onclick="event.stopPropagation();">
+                                <button class="btn-download" onclick="handleDownload('${app.id}')">
+                                    <i class="fas fa-download"></i> Download
+                                </button>
+                                <button class="btn-fav ${app.favorited ? 'active' : ''}" onclick="handleFavorite(this, '${app.id}')">
+                                    <i class="fas fa-heart"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `
+                <div style="text-align:center;padding:60px 20px;background:white;border-radius:16px;">
+                    <i class="fas fa-search" style="font-size:48px;color:#e5e7eb;margin-bottom:16px;"></i>
+                    <h3>No results found</h3>
+                    <p style="color:#6b7280;">Try searching with different keywords</p>
+                    <button class="btn-primary" style="margin-top:16px;" onclick="navigateTo('home')">Back to Home</button>
+                </div>
+            `}
+        </section>
+    `;
+}
+
+// ============================================
+// RENDER LOGIN
+// ============================================
 function renderLogin(container) {
     if (Auth.isLoggedIn()) {
         navigateTo('home');
@@ -240,14 +665,14 @@ function renderLogin(container) {
             <h2>👋 Welcome Back</h2>
             <form onsubmit="handleLogin(event)">
                 <div class="form-group">
-                    <label>Email</label>
+                    <label><i class="fas fa-envelope"></i> Email</label>
                     <input type="email" id="loginEmail" required placeholder="your@email.com">
                 </div>
                 <div class="form-group">
-                    <label>Password</label>
+                    <label><i class="fas fa-lock"></i> Password</label>
                     <input type="password" id="loginPassword" required placeholder="••••••••">
                 </div>
-                <button type="submit" class="btn-submit">Login</button>
+                <button type="submit" class="btn-submit"><i class="fas fa-sign-in-alt"></i> Login</button>
             </form>
             <div class="auth-link">
                 Don't have an account? <a href="#" onclick="navigateTo('register')">Sign Up</a>
@@ -256,7 +681,9 @@ function renderLogin(container) {
     `;
 }
 
-// ===== RENDER REGISTER =====
+// ============================================
+// RENDER REGISTER
+// ============================================
 function renderRegister(container) {
     if (Auth.isLoggedIn()) {
         navigateTo('home');
@@ -268,18 +695,18 @@ function renderRegister(container) {
             <h2>📝 Create Account</h2>
             <form onsubmit="handleRegister(event)">
                 <div class="form-group">
-                    <label>Username</label>
+                    <label><i class="fas fa-user"></i> Username</label>
                     <input type="text" id="regUsername" required placeholder="username">
                 </div>
                 <div class="form-group">
-                    <label>Email</label>
+                    <label><i class="fas fa-envelope"></i> Email</label>
                     <input type="email" id="regEmail" required placeholder="your@email.com">
                 </div>
                 <div class="form-group">
-                    <label>Password</label>
+                    <label><i class="fas fa-lock"></i> Password</label>
                     <input type="password" id="regPassword" required placeholder="••••••••" minlength="6">
                 </div>
-                <button type="submit" class="btn-submit">Sign Up</button>
+                <button type="submit" class="btn-submit"><i class="fas fa-user-plus"></i> Sign Up</button>
             </form>
             <div class="auth-link">
                 Already have an account? <a href="#" onclick="navigateTo('login')">Login</a>
@@ -288,7 +715,9 @@ function renderRegister(container) {
     `;
 }
 
-// ===== RENDER SUBMIT =====
+// ============================================
+// RENDER SUBMIT
+// ============================================
 function renderSubmit(container) {
     if (!Auth.isLoggedIn()) {
         container.innerHTML = `
@@ -304,7 +733,7 @@ function renderSubmit(container) {
     container.innerHTML = `
         <div class="auth-form">
             <h2>📤 Submit Your App</h2>
-            <p style="text-align:center;color:#6b7280;margin-bottom:20px;">Add your app to the store</p>
+            <p style="text-align:center;color:#6b7280;margin-bottom:20px;">Add your app to the store and reach millions of users</p>
             
             <form onsubmit="handleSubmitApp(event)">
                 <div class="form-group">
@@ -320,6 +749,7 @@ function renderSubmit(container) {
                 <div class="form-group">
                     <label>Category *</label>
                     <select id="appCategory" required>
+                        <option value="">Select a category</option>
                         <option value="games">🎮 Games</option>
                         <option value="education">📚 Education</option>
                         <option value="finance">💰 Finance</option>
@@ -328,6 +758,8 @@ function renderSubmit(container) {
                         <option value="productivity">📊 Productivity</option>
                         <option value="health">💪 Health</option>
                         <option value="music">🎵 Music</option>
+                        <option value="entertainment">🎬 Entertainment</option>
+                        <option value="news">📰 News</option>
                     </select>
                 </div>
                 
@@ -342,18 +774,19 @@ function renderSubmit(container) {
                 </div>
                 
                 <div class="form-group">
-                    <label>🔗 Deployment Links (Optional)</label>
+                    <label>🔗 Deployment Links (For APK Generation)</label>
+                    <p style="font-size:12px;color:#6b7280;margin-bottom:8px;">We'll generate an APK from these deployment links</p>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                        <input type="url" id="vercelLink" placeholder="Vercel URL">
-                        <input type="url" id="renderLink" placeholder="Render URL">
-                        <input type="url" id="netlifyLink" placeholder="Netlify URL">
-                        <input type="url" id="githubLink" placeholder="GitHub URL">
+                        <input type="url" id="vercelLink" placeholder="Vercel URL (e.g., https://app.vercel.app)">
+                        <input type="url" id="renderLink" placeholder="Render URL (e.g., https://app.onrender.com)">
+                        <input type="url" id="netlifyLink" placeholder="Netlify URL (e.g., https://app.netlify.app)">
+                        <input type="url" id="githubLink" placeholder="GitHub URL (e.g., https://github.com/user/repo)">
                     </div>
                 </div>
                 
                 <div class="form-group">
                     <label>Features (comma separated)</label>
-                    <input type="text" id="appFeatures" placeholder="Fast, Secure, User-friendly">
+                    <input type="text" id="appFeatures" placeholder="Fast, Secure, User-friendly, Offline">
                 </div>
                 
                 <button type="submit" class="btn-submit">🚀 Submit App</button>
@@ -362,7 +795,9 @@ function renderSubmit(container) {
     `;
 }
 
-// ===== HANDLERS =====
+// ============================================
+// HANDLERS
+// ============================================
 async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value;
@@ -380,6 +815,7 @@ async function handleRegister(e) {
 
 async function handleSubmitApp(e) {
     e.preventDefault();
+    
     const data = {
         name: document.getElementById('appName').value,
         packageName: document.getElementById('packageName').value,
@@ -395,29 +831,31 @@ async function handleSubmitApp(e) {
         }
     };
 
+    showNotification('⏳ Generating APK from deployment links...', 'info');
+
     try {
         const result = await api.post('/apps/submit', data, authToken);
         if (result.success) {
-            showNotification('✅ App submitted successfully!', 'success');
+            showNotification('✅ App submitted and APK generated successfully!', 'success');
             navigateTo('home');
         } else {
             showNotification(result.message || 'Submission failed', 'error');
         }
     } catch (error) {
-        showNotification('Submission failed', 'error');
+        showNotification('Submission failed: ' + error.message, 'error');
     }
 }
 
-function handleDownload(appName) {
+function handleDownload(appId) {
     if (!Auth.isLoggedIn()) {
         showNotification('Please login to download', 'error');
         navigateTo('login');
         return;
     }
-    showNotification(`📥 Downloading ${appName}...`, 'success');
+    showNotification('📥 Downloading app...', 'success');
 }
 
-function handleFavorite(btn) {
+function handleFavorite(btn, appId) {
     if (!Auth.isLoggedIn()) {
         showNotification('Please login to favorite', 'error');
         navigateTo('login');
@@ -427,21 +865,9 @@ function handleFavorite(btn) {
     showNotification('❤️ Updated favorites', 'success');
 }
 
-// ===== UTILITY FUNCTIONS =====
-function getCategoryIcon(category) {
-    const icons = {
-        'Games': 'gamepad',
-        'Education': 'graduation-cap',
-        'Finance': 'coins',
-        'Social': 'users',
-        'Tools': 'tools',
-        'Productivity': 'chart-line',
-        'Health': 'heartbeat',
-        'Music': 'music'
-    };
-    return icons[category] || 'cube';
-}
-
+// ============================================
+// NOTIFICATION
+// ============================================
 function showNotification(message, type = 'info') {
     const existing = document.querySelector('.notification');
     if (existing) existing.remove();
@@ -451,33 +877,40 @@ function showNotification(message, type = 'info') {
     div.textContent = message;
     document.body.appendChild(div);
     
-    setTimeout(() => div.remove(), 3000);
+    setTimeout(() => div.remove(), 3500);
 }
 
-// ===== INIT =====
+// ============================================
+// INIT
+// ============================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Check server health
+    Auth.checkHealth().then(isHealthy => {
+        if (!isHealthy) {
+            showNotification('⚠️ Server is starting up. Please wait a moment.', 'warning');
+        }
+    });
+    
     Auth.loadUser();
-    
-    // Setup main content
-    const mainContent = document.createElement('main');
-    mainContent.className = 'container';
-    mainContent.id = 'mainContent';
-    document.querySelector('body').insertBefore(mainContent, document.querySelector('footer'));
-    
     navigateTo('home');
     
     // Search
-    document.querySelector('.nav-search button')?.addEventListener('click', () => {
-        const query = document.querySelector('.nav-search input').value.trim();
-        if (query) showNotification(`🔍 Searching for "${query}"`, 'info');
-    });
-    
-    document.querySelector('.nav-search input')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const query = e.target.value.trim();
-            if (query) showNotification(`🔍 Searching for "${query}"`, 'info');
+    document.getElementById('searchBtn').addEventListener('click', () => {
+        const query = document.getElementById('searchInput').value.trim();
+        if (query) {
+            navigateTo('search', query);
         }
     });
+    
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const query = e.target.value.trim();
+            if (query) {
+                navigateTo('search', query);
+            }
+        }
+    });
+    
+    console.log(`✅ ${CONFIG.APP_NAME} v${CONFIG.VERSION} loaded successfully!`);
+    console.log(`🔗 Deployed at: ${CONFIG.RENDER_URL}`);
 });
-
-console.log('✅ Alpha App Store loaded!');
