@@ -1,13 +1,11 @@
 // ============================================
 // ALPHA APP STORE - REAL APK GENERATOR
-// Generates actual APK files from deployment links
+// Uses native fetch (no axios dependency)
 // ============================================
 
 const fs = require('fs-extra');
 const path = require('path');
 const archiver = require('archiver');
-const axios = require('axios');
-const { exec } = require('child_process');
 const { App, User } = require('./models');
 
 // ============================================
@@ -17,7 +15,6 @@ const generateAppAPK = async (appId, userId) => {
     try {
         console.log('🚀 Starting APK generation for app:', appId);
         
-        // Get app and user
         const app = await App.findById(appId);
         if (!app) {
             throw new Error('App not found');
@@ -29,11 +26,9 @@ const generateAppAPK = async (appId, userId) => {
             throw new Error('User not found');
         }
         
-        // Update status to generating
         app.status = 'generating';
         await app.save();
         
-        // Create app directory
         const appDir = path.join(__dirname, 'generated-apps', app.packageName);
         const apkDir = path.join(__dirname, 'generated-apps');
         await fs.ensureDir(appDir);
@@ -41,55 +36,43 @@ const generateAppAPK = async (appId, userId) => {
         console.log('📁 Created directory:', appDir);
         
         // ============================================
-        // STEP 1: GENERATE HTML APP SHELL
+        // GENERATE FILES
         // ============================================
         console.log('📄 Generating HTML shell...');
         const htmlContent = generateHTML(app);
         await fs.writeFile(path.join(appDir, 'index.html'), htmlContent);
         
-        // ============================================
-        // STEP 2: GENERATE SERVICE WORKER (PWA)
-        // ============================================
         console.log('📄 Generating Service Worker...');
         const swContent = generateServiceWorker(app);
         await fs.writeFile(path.join(appDir, 'sw.js'), swContent);
         
-        // ============================================
-        // STEP 3: GENERATE MANIFEST (PWA)
-        // ============================================
         console.log('📄 Generating Manifest...');
         const manifestContent = generateManifest(app);
         await fs.writeFile(path.join(appDir, 'manifest.json'), manifestContent);
         
-        // ============================================
-        // STEP 4: GENERATE ICONS
-        // ============================================
         console.log('🖼️ Generating icons...');
         await generateIcons(appDir, app);
         
         // ============================================
-        // STEP 5: DOWNLOAD DEPLOYMENT CONTENT
+        // FETCH DEPLOYMENT CONTENT (using fetch, no axios)
         // ============================================
         console.log('🌐 Fetching deployment content...');
         await fetchDeploymentContent(app, appDir);
         
         // ============================================
-        // STEP 6: CREATE APK (ZIP format)
+        // CREATE APK
         // ============================================
         console.log('📦 Creating APK package...');
         const apkPath = path.join(apkDir, `${app.packageName}.apk`);
         const zipPath = path.join(apkDir, `${app.packageName}.zip`);
         
-        // Create zip
         await createZip(appDir, zipPath);
-        
-        // Rename to APK
         await fs.copy(zipPath, apkPath);
         await fs.remove(zipPath);
         console.log('✅ APK created:', apkPath);
         
         // ============================================
-        // STEP 7: UPDATE DATABASE
+        // UPDATE DATABASE
         // ============================================
         console.log('💾 Updating database...');
         app.generated = true;
@@ -99,11 +82,6 @@ const generateAppAPK = async (appId, userId) => {
         app.status = 'generated';
         await app.save();
         console.log('✅ Database updated');
-        
-        // ============================================
-        // STEP 8: CLEANUP
-        // ============================================
-        // Keep the app directory for web hosting
         
         console.log('🎉 APK generation complete!');
         
@@ -122,7 +100,6 @@ const generateAppAPK = async (appId, userId) => {
     } catch (error) {
         console.error('❌ APK Generation Error:', error);
         
-        // Update app status to failed
         try {
             const app = await App.findById(appId);
             if (app) {
@@ -154,7 +131,6 @@ function generateHTML(app) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#4f46e5">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="${app.description || app.name}">
     <title>${app.name}</title>
     <link rel="manifest" href="manifest.json">
@@ -205,15 +181,8 @@ function generateHTML(app) {
             margin-bottom: 16px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        .card h2 {
-            font-size: 16px;
-            margin-bottom: 12px;
-            color: #1a1a2e;
-        }
-        .card p {
-            color: #4b5563;
-            line-height: 1.6;
-        }
+        .card h2 { font-size: 16px; margin-bottom: 12px; color: #1a1a2e; }
+        .card p { color: #4b5563; line-height: 1.6; }
         .feature {
             padding: 8px 12px;
             background: #f3f4f6;
@@ -353,7 +322,6 @@ function generateHTML(app) {
     </div>
 
     <script>
-        // Install prompt
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -374,14 +342,12 @@ function generateHTML(app) {
             document.body.appendChild(btn);
         });
 
-        // Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
                 .then(() => console.log('✅ SW registered'))
                 .catch(() => console.log('❌ SW failed'));
         }
 
-        // Bottom nav
         document.querySelectorAll('.bottom-nav button').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.remove('active'));
@@ -397,19 +363,10 @@ function generateHTML(app) {
 // GENERATE SERVICE WORKER
 // ============================================
 function generateServiceWorker(app) {
-    return `// ============================================
-// ALPHA APP STORE - SERVICE WORKER
-// ============================================
-
+    return `
 const CACHE_NAME = '${app.packageName}-v1';
-const ASSETS = [
-    '/',
-    '/index.html',
-    '/manifest.json',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
-];
+const ASSETS = ['/', '/index.html', '/manifest.json', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'];
 
-// Install
 self.addEventListener('install', (e) => {
     e.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
@@ -419,7 +376,6 @@ self.addEventListener('install', (e) => {
     );
 });
 
-// Activate
 self.addEventListener('activate', (e) => {
     e.waitUntil(
         caches.keys().then(keys => {
@@ -430,26 +386,13 @@ self.addEventListener('activate', (e) => {
     );
 });
 
-// Fetch
 self.addEventListener('fetch', (e) => {
     e.respondWith(
         caches.match(e.request).then(response => {
             return response || fetch(e.request);
         })
     );
-});
-
-// Push
-self.addEventListener('push', (e) => {
-    const data = e.data.json();
-    self.registration.showNotification(data.title || '${app.name}', {
-        body: data.body || 'New update available!',
-        icon: '/icon-192.png',
-        badge: '/icon-192.png'
-    });
-});
-
-console.log('✅ Service Worker loaded for ${app.name}');`;
+});`;
 }
 
 // ============================================
@@ -467,18 +410,8 @@ function generateManifest(app) {
         orientation: 'portrait',
         scope: '/',
         icons: [
-            {
-                src: 'icon-192.png',
-                sizes: '192x192',
-                type: 'image/png',
-                purpose: 'any maskable'
-            },
-            {
-                src: 'icon-512.png',
-                sizes: '512x512',
-                type: 'image/png',
-                purpose: 'any maskable'
-            }
+            { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+            { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
         ]
     }, null, 2);
 }
@@ -493,23 +426,17 @@ async function generateIcons(appDir, app) {
     <text x="256" y="380" font-size="40" text-anchor="middle" fill="white">${app.name.substring(0, 8)}</text>
 </svg>`;
     
-    // Save SVG icon
     await fs.writeFile(path.join(appDir, 'icon.svg'), iconSvg);
     await fs.writeFile(path.join(appDir, 'icon-192.svg'), iconSvg);
     await fs.writeFile(path.join(appDir, 'icon-512.svg'), iconSvg);
-    
-    // Create PNG placeholders (using SVG that browsers can render)
-    // For real PNG conversion, you'd need sharp or similar library
-    // We'll use SVG as fallback
     console.log('✅ Icons generated as SVG');
 }
 
 // ============================================
-// FETCH DEPLOYMENT CONTENT
+// FETCH DEPLOYMENT CONTENT (using fetch, no axios)
 // ============================================
 async function fetchDeploymentContent(app, appDir) {
     try {
-        // Try to fetch content from first available deployment
         const urls = [];
         if (app.deployment.vercel) urls.push(app.deployment.vercel);
         if (app.deployment.render) urls.push(app.deployment.render);
@@ -522,25 +449,21 @@ async function fetchDeploymentContent(app, appDir) {
             return;
         }
         
-        // Try each URL
         for (const url of urls) {
             try {
                 console.log(`🌐 Fetching from: ${url}`);
-                const response = await axios.get(url, {
-                    timeout: 10000,
+                const response = await fetch(url, {
                     headers: { 'User-Agent': 'Alpha-App-Store' }
                 });
                 
-                if (response.status === 200) {
+                if (response.ok) {
+                    const html = await response.text();
                     console.log(`✅ Content fetched from: ${url}`);
                     
-                    // Save the fetched HTML as index.html if it's HTML
-                    const contentType = response.headers['content-type'] || '';
-                    if (contentType.includes('html') || response.data.includes('<!DOCTYPE html')) {
-                        await fs.writeFile(path.join(appDir, 'index.html'), response.data);
+                    if (html.includes('<!DOCTYPE html') || html.includes('<html')) {
+                        await fs.writeFile(path.join(appDir, 'index.html'), html);
                         console.log('✅ Updated index.html from deployment');
                     }
-                    
                     break;
                 }
             } catch (urlError) {
@@ -559,9 +482,7 @@ async function fetchDeploymentContent(app, appDir) {
 function createZip(sourceDir, targetPath) {
     return new Promise((resolve, reject) => {
         const output = fs.createWriteStream(targetPath);
-        const archive = archiver('zip', {
-            zlib: { level: 9 }
-        });
+        const archive = archiver('zip', { zlib: { level: 9 } });
         
         output.on('close', () => {
             console.log(`✅ Zip created: ${targetPath} (${archive.pointer()} bytes)`);
@@ -579,64 +500,10 @@ function createZip(sourceDir, targetPath) {
 }
 
 // ============================================
-// GENERATE APK FROM HTML (Alternative method)
-// ============================================
-async function generateAPKFromHTML(appId) {
-    try {
-        const app = await App.findById(appId);
-        if (!app) throw new Error('App not found');
-        
-        const appDir = path.join(__dirname, 'generated-apps', app.packageName);
-        const apkDir = path.join(__dirname, 'generated-apps');
-        await fs.ensureDir(appDir);
-        
-        // Generate files
-        const files = {
-            'index.html': generateHTML(app),
-            'sw.js': generateServiceWorker(app),
-            'manifest.json': generateManifest(app),
-            'icon-192.png': '<svg width="192" height="192" xmlns="http://www.w3.org/2000/svg"><rect width="192" height="192" fill="#4f46e5"/><text x="96" y="120" font-size="80" text-anchor="middle" fill="white">📱</text></svg>',
-            'icon-512.png': '<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" fill="#4f46e5"/><text x="256" y="300" font-size="200" text-anchor="middle" fill="white">📱</text></svg>'
-        };
-        
-        for (const [name, content] of Object.entries(files)) {
-            await fs.writeFile(path.join(appDir, name), content);
-        }
-        
-        // Create APK
-        const apkPath = path.join(apkDir, `${app.packageName}.apk`);
-        const zipPath = path.join(apkDir, `${app.packageName}.zip`);
-        
-        await createZip(appDir, zipPath);
-        await fs.copy(zipPath, apkPath);
-        await fs.remove(zipPath);
-        
-        // Update database
-        app.generated = true;
-        app.generatedApkPath = `generated-apps/${app.packageName}.apk`;
-        app.generatedAt = new Date();
-        app.apkUrl = `/generated/${app.packageName}.apk`;
-        app.status = 'generated';
-        await app.save();
-        
-        return {
-            success: true,
-            apkUrl: app.apkUrl,
-            downloadUrl: `/api/apps/download/${app.packageName}`,
-            apkPath: apkPath
-        };
-    } catch (error) {
-        console.error('❌ APK generation error:', error);
-        throw error;
-    }
-}
-
-// ============================================
 // EXPORT
 // ============================================
 module.exports = {
     generateAppAPK,
-    generateAPKFromHTML,
     generateHTML,
     generateServiceWorker,
     generateManifest
