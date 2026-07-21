@@ -7,7 +7,7 @@
 // ============================================
 const CONFIG = {
     API_URL: 'https://alpha-app-store.onrender.com/api',
-    FRONTEND_URL: 'https://apk-store.vercel.app',
+    FRONTEND_URL: 'https://alpha-app-store.vercel.app',
     APP_NAME: 'APK Store',
     VERSION: '2.0.0'
 };
@@ -36,14 +36,19 @@ const api = {
 
         try {
             const url = `${CONFIG.API_URL}${endpoint}`;
-            const res = await fetch(url, { headers, credentials: 'include' });
+            console.log(`📡 GET: ${url}`);
+            const res = await fetch(url, { 
+                headers, 
+                credentials: 'include',
+                mode: 'cors'
+            });
             if (!res.ok) {
                 const error = await res.json().catch(() => ({}));
                 throw new Error(error.message || `HTTP ${res.status}`);
             }
             return res.json();
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('API GET Error:', error);
             throw error;
         }
     },
@@ -57,11 +62,14 @@ const api = {
 
         try {
             const url = `${CONFIG.API_URL}${endpoint}`;
+            console.log(`📡 POST: ${url}`);
+            console.log(`📦 Data:`, data);
             const res = await fetch(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(data),
-                credentials: 'include'
+                credentials: 'include',
+                mode: 'cors'
             });
             const result = await res.json();
             if (!res.ok) {
@@ -69,7 +77,7 @@ const api = {
             }
             return result;
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('API POST Error:', error);
             throw error;
         }
     },
@@ -83,11 +91,13 @@ const api = {
 
         try {
             const url = `${CONFIG.API_URL}${endpoint}`;
+            console.log(`📡 PUT: ${url}`);
             const res = await fetch(url, {
                 method: 'PUT',
                 headers,
                 body: JSON.stringify(data),
-                credentials: 'include'
+                credentials: 'include',
+                mode: 'cors'
             });
             const result = await res.json();
             if (!res.ok) {
@@ -95,7 +105,7 @@ const api = {
             }
             return result;
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('API PUT Error:', error);
             throw error;
         }
     },
@@ -109,10 +119,12 @@ const api = {
 
         try {
             const url = `${CONFIG.API_URL}${endpoint}`;
+            console.log(`📡 DELETE: ${url}`);
             const res = await fetch(url, {
                 method: 'DELETE',
                 headers,
-                credentials: 'include'
+                credentials: 'include',
+                mode: 'cors'
             });
             if (!res.ok) {
                 const error = await res.json().catch(() => ({}));
@@ -120,7 +132,7 @@ const api = {
             }
             return res.json();
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('API DELETE Error:', error);
             throw error;
         }
     }
@@ -136,6 +148,7 @@ const Auth = {
 
     login: async (email, password) => {
         try {
+            console.log('🔐 Attempting login...');
             const result = await api.post('/auth/login', { email, password });
             if (result.success) {
                 currentUser = result.data.user;
@@ -150,14 +163,16 @@ const Auth = {
             showNotification(result.message || 'Login failed', 'error');
             return { success: false };
         } catch (error) {
+            console.error('Login error:', error);
             showNotification('❌ Login failed: ' + error.message, 'error');
             return { success: false };
         }
     },
 
-    register: async (username, email, password) => {
+    register: async (username, email, password, role = 'user') => {
         try {
-            const result = await api.post('/auth/register', { username, email, password });
+            console.log('📝 Attempting registration...');
+            const result = await api.post('/auth/register', { username, email, password, role });
             if (result.success) {
                 currentUser = result.data.user;
                 authToken = result.data.token;
@@ -171,6 +186,7 @@ const Auth = {
             showNotification(result.message || 'Registration failed', 'error');
             return { success: false };
         } catch (error) {
+            console.error('Registration error:', error);
             showNotification('❌ Registration failed: ' + error.message, 'error');
             return { success: false };
         }
@@ -189,10 +205,17 @@ const Auth = {
     loadUser: async () => {
         if (!authToken) return;
         try {
+            console.log('👤 Loading user...');
             const result = await api.get('/auth/me', authToken);
             if (result.success) {
                 currentUser = result.data.user;
                 localStorage.setItem('user', JSON.stringify(currentUser));
+                console.log('✅ User loaded:', currentUser.username);
+            } else {
+                console.log('⚠️ Token invalid, clearing...');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                authToken = null;
             }
         } catch (error) {
             console.error('Failed to load user:', error);
@@ -205,14 +228,22 @@ const Auth = {
 
     checkHealth: async () => {
         try {
-            const res = await fetch(CONFIG.API_URL.replace('/api', '') + '/health');
+            const baseUrl = CONFIG.API_URL.replace('/api', '');
+            console.log(`🏥 Checking health at: ${baseUrl}/health`);
+            const res = await fetch(`${baseUrl}/health`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                mode: 'cors'
+            });
             if (res.ok) {
-                console.log('✅ Server is healthy');
+                const data = await res.json();
+                console.log('✅ Server is healthy:', data);
                 return true;
             }
+            console.log('⚠️ Health check failed with status:', res.status);
             return false;
         } catch (error) {
-            console.error('Health check failed:', error);
+            console.error('❌ Health check failed:', error);
             return false;
         }
     }
@@ -226,7 +257,9 @@ function toggleTheme() {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
     const icon = document.querySelector('.theme-toggle i');
-    icon.className = theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+    if (icon) {
+        icon.className = theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+    }
 }
 
 function loadTheme() {
@@ -242,29 +275,29 @@ function updateUI() {
     const adminBtn = document.getElementById('navAdmin');
     const favBtn = document.getElementById('navFavorites');
 
-    if (Auth.isLoggedIn()) {
-        authBtn.innerHTML = `<i class="fas fa-user-circle"></i> ${currentUser?.username || 'User'}`;
+    if (Auth.isLoggedIn() && currentUser) {
+        authBtn.innerHTML = `<i class="fas fa-user-circle"></i> ${currentUser.username}`;
         authBtn.className = '';
         authBtn.style.color = 'var(--primary)';
         authBtn.style.background = 'none';
         authBtn.onclick = () => navigate('profile');
 
-        if (currentUser?.role === 'developer' || currentUser?.role === 'admin') {
-            devBtn.style.display = 'inline';
+        if (currentUser.role === 'developer' || currentUser.role === 'admin') {
+            if (devBtn) devBtn.style.display = 'inline';
         }
-        if (currentUser?.role === 'admin') {
-            adminBtn.style.display = 'inline';
+        if (currentUser.role === 'admin') {
+            if (adminBtn) adminBtn.style.display = 'inline';
         }
-        favBtn.style.display = 'inline';
+        if (favBtn) favBtn.style.display = 'inline';
     } else {
         authBtn.innerHTML = `<i class="fas fa-user"></i> Login`;
         authBtn.className = 'btn-primary';
         authBtn.style.color = '';
         authBtn.style.background = '';
         authBtn.onclick = () => handleAuth();
-        devBtn.style.display = 'none';
-        adminBtn.style.display = 'none';
-        favBtn.style.display = 'none';
+        if (devBtn) devBtn.style.display = 'none';
+        if (adminBtn) adminBtn.style.display = 'none';
+        if (favBtn) favBtn.style.display = 'none';
     }
 }
 
@@ -480,7 +513,7 @@ async function renderHome(container) {
             <div style="text-align:center;padding:60px 20px;">
                 <i class="fas fa-exclamation-circle" style="font-size:48px;color:var(--danger);"></i>
                 <h3 style="margin-top:16px;">Failed to load apps</h3>
-                <p style="color:var(--text-muted);">Please refresh the page or try again later.</p>
+                <p style="color:var(--text-muted);">${error.message || 'Please refresh the page or try again later.'}</p>
                 <button class="btn-primary" style="margin-top:16px;" onclick="navigate('home')">Retry</button>
             </div>
         `;
@@ -1078,10 +1111,7 @@ async function renderAdminPanel(container) {
     `;
 
     try {
-        const [statsResult, appsResult, usersResult] = await Promise.all([
-            api.get('/admin/stats', authToken).catch(() => ({}))
-        ]);
-
+        const statsResult = await api.get('/admin/stats', authToken).catch(() => ({}));
         const stats = statsResult.data || {};
 
         container.innerHTML = `
@@ -1256,7 +1286,7 @@ async function handleRegister(e) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
     btn.disabled = true;
 
-    await Auth.register(username, email, password);
+    await Auth.register(username, email, password, role);
 
     btn.innerHTML = original;
     btn.disabled = false;
@@ -1595,15 +1625,31 @@ function getCategoryIcon(category) {
 // INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log(`🚀 ${CONFIG.APP_NAME} v${CONFIG.VERSION}`);
+    console.log(`📍 Backend: ${CONFIG.API_URL}`);
+    
+    // Load theme
     loadTheme();
+    
+    // Check server health
+    const isHealthy = await Auth.checkHealth();
+    if (!isHealthy) {
+        showNotification('⚠️ Server is starting up. Please wait a moment.', 'warning');
+    }
+    
+    // Load user
     await Auth.loadUser();
-    await Auth.checkHealth();
+    
+    // Navigate to home
     navigate('home');
 
     // Search on Enter
-    document.getElementById('searchInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') searchApps();
-    });
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchApps();
+        });
+    }
 
     console.log('✅ APK Store initialized successfully!');
 });
