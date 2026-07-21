@@ -1,5 +1,5 @@
 const express = require('express');
-const router = express.Router(); // <-- THIS WAS MISSING!
+const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const fs = require('fs-extra');
@@ -90,6 +90,8 @@ const upload = multer({
 // ============================================
 // AUTH ROUTES
 // ============================================
+
+// REGISTER - /auth/register
 router.post('/auth/register', async (req, res) => {
     try {
         console.log('📝 Registration request received:', req.body.email);
@@ -149,6 +151,7 @@ router.post('/auth/register', async (req, res) => {
     }
 });
 
+// LOGIN - /auth/login
 router.post('/auth/login', async (req, res) => {
     try {
         console.log('🔐 Login request received:', req.body.email);
@@ -212,6 +215,7 @@ router.post('/auth/login', async (req, res) => {
     }
 });
 
+// GET CURRENT USER - /auth/me
 router.get('/auth/me', protect, async (req, res) => {
     try {
         res.status(200).json({
@@ -645,7 +649,6 @@ router.post('/favorites/:appId', protect, async (req, res) => {
         const existing = await Favorite.findOne({ user: req.user._id, app: appId });
         if (existing) {
             await existing.deleteOne();
-            // Remove from user's favorites
             await User.findByIdAndUpdate(req.user._id, {
                 $pull: { favorites: appId }
             });
@@ -657,8 +660,6 @@ router.post('/favorites/:appId', protect, async (req, res) => {
         }
 
         await Favorite.create({ user: req.user._id, app: appId });
-
-        // Add to user's favorites
         await User.findByIdAndUpdate(req.user._id, {
             $addToSet: { favorites: appId }
         });
@@ -747,7 +748,6 @@ router.patch('/admin/apps/:id', protect, isAdmin, async (req, res) => {
 
         await app.save();
 
-        // Send notification to developer
         if (status) {
             const notification = new Notification({
                 user: app.developer,
@@ -858,7 +858,6 @@ router.patch('/developer/apps/:id', protect, isDeveloper, async (req, res) => {
             });
         }
 
-        // If version updated, regenerate APK
         if (version && version !== app.version) {
             try {
                 const result = await generateAppAPK(app._id, req.user._id);
