@@ -139,17 +139,17 @@ const api = {
 };
 
 // ============================================
-// AUTH SYSTEM - FIXED
+// AUTH SYSTEM - SIMPLIFIED (Email only for login)
 // ============================================
 const Auth = {
     getUser: () => currentUser,
     getToken: () => authToken,
     isLoggedIn: () => !!authToken,
 
+    // ✅ LOGIN - uses /auth/login (email + password only)
     login: async (email, password) => {
         try {
             console.log('🔐 Attempting login...');
-            // CORRECT ENDPOINT: /auth/login
             const result = await api.post('/auth/login', { email, password });
             if (result.success) {
                 currentUser = result.data.user;
@@ -170,10 +170,10 @@ const Auth = {
         }
     },
 
+    // ✅ REGISTER - uses /auth/register (username + email + password)
     register: async (username, email, password, role = 'user') => {
         try {
             console.log('📝 Attempting registration...');
-            // CORRECT ENDPOINT: /auth/register
             const result = await api.post('/auth/register', { 
                 username, 
                 email, 
@@ -777,7 +777,7 @@ async function renderCategories(container) {
 }
 
 // ============================================
-// RENDER LOGIN - FIXED
+// RENDER LOGIN - Email + Password only
 // ============================================
 function renderLogin(container) {
     if (Auth.isLoggedIn()) {
@@ -808,7 +808,7 @@ function renderLogin(container) {
 }
 
 // ============================================
-// RENDER REGISTER - FIXED
+// RENDER REGISTER
 // ============================================
 function renderRegister(container) {
     if (Auth.isLoggedIn()) {
@@ -1263,12 +1263,13 @@ function renderProfile(container) {
 }
 
 // ============================================
-// HANDLERS - FIXED
+// HANDLERS
 // ============================================
 
-// LOGIN HANDLER - Calls /auth/login
+// LOGIN HANDLER - Email + Password only
 async function handleLogin(e) {
     e.preventDefault();
+    
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
 
@@ -1290,9 +1291,10 @@ async function handleLogin(e) {
     btn.disabled = false;
 }
 
-// REGISTER HANDLER - Calls /auth/register
+// REGISTER HANDLER
 async function handleRegister(e) {
     e.preventDefault();
+    
     const username = document.getElementById('regUsername').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const password = document.getElementById('regPassword').value;
