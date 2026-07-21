@@ -400,7 +400,7 @@ router.get('/apps/:id', async (req, res) => {
 });
 
 // ============================================
-// APP SUBMIT (Developer)
+// APP SUBMIT (Developer) - FIXED
 // ============================================
 router.post('/apps/submit', protect, isDeveloper, upload.fields([
     { name: 'icon', maxCount: 1 },
@@ -408,6 +408,10 @@ router.post('/apps/submit', protect, isDeveloper, upload.fields([
     { name: 'apk', maxCount: 1 }
 ]), async (req, res) => {
     try {
+        console.log('📝 App submission request received');
+        console.log('👤 User:', req.user?.username || req.user?.email);
+        console.log('📦 Body:', req.body);
+        
         const {
             name,
             packageName,
@@ -424,36 +428,28 @@ router.post('/apps/submit', protect, isDeveloper, upload.fields([
 
         // Validate
         if (!name || !packageName || !category) {
-            return res.status(400).json({ success: false, message: 'Name, package name and category required' });
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Name, package name and category are required' 
+            });
         }
 
         // Check if app exists
         const existing = await App.findOne({ packageName });
         if (existing) {
-            return res.status(400).json({ success: false, message: 'App already exists' });
+            return res.status(400).json({ 
+                success: false, 
+                message: 'App already exists with this package name' 
+            });
         }
 
         // Get category
         const categoryDoc = await Category.findOne({ slug: category });
         if (!categoryDoc) {
-            return res.status(400).json({ success: false, message: 'Invalid category' });
-        }
-
-        // Process files
-        let iconUrl = null;
-        let screenshotUrls = [];
-        let apkPath = null;
-
-        if (req.files) {
-            if (req.files.icon) {
-                iconUrl = `/uploads/icons/${req.files.icon[0].filename}`;
-            }
-            if (req.files.screenshots) {
-                screenshotUrls = req.files.screenshots.map(f => `/uploads/screenshots/${f.filename}`);
-            }
-            if (req.files.apk) {
-                apkPath = `/uploads/apks/${req.files.apk[0].filename}`;
-            }
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Invalid category' 
+            });
         }
 
         // Create app
@@ -467,23 +463,14 @@ router.post('/apps/submit', protect, isDeveloper, upload.fields([
             developer: req.user._id,
             version: version || '1.0.0',
             minAndroidVersion: minAndroidVersion || '5.0',
-            icon: iconUrl,
-            screenshots: screenshotUrls,
-            apkFilePath: apkPath,
-            features: features ? features.split(',').map(f => f.trim()) : [],
-            permissions: permissions ? permissions.split(',').map(p => p.trim()) : [],
-            changelog: changelog ? [{ version: version || '1.0.0', changes: changelog.split(',').map(c => c.trim()) }] : [],
-            deployment: deployment ? {
-                vercel: deployment.vercel || '',
-                render: deployment.render || '',
-                netlify: deployment.netlify || '',
-                github: deployment.github || '',
-                custom: deployment.custom || ''
-            } : {},
+            features: features || ['Fast loading', 'User friendly', 'Secure'],
+            permissions: permissions || ['Internet', 'Storage'],
+            deployment: deployment || {},
             status: 'pending'
         });
 
         await app.save();
+        console.log('✅ App created:', app.name);
 
         // Auto-generate APK if deployment URL provided
         let generationResult = null;
@@ -491,6 +478,7 @@ router.post('/apps/submit', protect, isDeveloper, upload.fields([
         
         if (hasDeployment) {
             try {
+                console.log('🚀 Starting APK generation...');
                 generationResult = await generateAppAPK(app._id, req.user._id);
                 app.generated = true;
                 app.generatedApkPath = generationResult.apkPath;
@@ -501,8 +489,12 @@ router.post('/apps/submit', protect, isDeveloper, upload.fields([
                 app.isPublished = true;
                 app.publishedAt = new Date();
                 await app.save();
+                console.log('✅ APK generated successfully');
             } catch (genError) {
-                console.error('APK generation failed:', genError);
+                console.error('❌ APK generation failed:', genError);
+                app.status = 'pending';
+                app.generated = false;
+                await app.save();
             }
         }
 
@@ -515,7 +507,11 @@ router.post('/apps/submit', protect, isDeveloper, upload.fields([
             }
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error('❌ Submit error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to submit app: ' + error.message 
+        });
     }
 });
 
