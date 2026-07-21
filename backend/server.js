@@ -20,28 +20,17 @@ dirs.forEach(dir => {
 });
 
 // ============================================
-// CORS - FIXED
+// CORS - COMPLETE FIX
 // ============================================
-const allowedOrigins = [
-    'https://alpha-app-store.vercel.app',
-    'https://apk-store.vercel.app',
-    'http://localhost:3000',
-    'http://localhost:5000',
-    'http://127.0.0.1:5500',
-    'https://alpha-app-store-git-main-mamme234.vercel.app'
-];
-
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            console.log('Blocked origin:', origin);
-            callback(null, true); // Allow all in development
-        }
-    },
+    origin: [
+        'https://alpha-app-store.vercel.app',
+        'https://apk-store.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:5000',
+        'http://127.0.0.1:5500',
+        'https://alpha-app-store-git-main-mamme234.vercel.app'
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
@@ -102,9 +91,8 @@ app.get('/', (req, res) => {
         endpoints: {
             health: '/health',
             api: '/api',
-            apps: '/api/apps',
-            auth: '/api/auth/register',
-            auth_login: '/api/auth/login'
+            auth: '/api/auth',
+            apps: '/api/apps'
         }
     });
 });
@@ -137,5 +125,4 @@ app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📁 Uploads: ${path.join(__dirname, 'uploads')}`);
     console.log(`📁 Generated APKs: ${path.join(__dirname, 'generated-apps')}`);
-    console.log(`🌐 Health check: http://localhost:${PORT}/health`);
 });
