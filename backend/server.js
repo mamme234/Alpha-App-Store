@@ -32,7 +32,7 @@ const limiter = rateLimit({
 // CORS
 // ============================================
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'https://apk-platform.vercel.app',
+    origin: process.env.FRONTEND_URL || 'https://apk-store.vercel.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
@@ -58,16 +58,14 @@ mongoose.connect(process.env.MONGODB_URI)
     .catch(err => console.error('❌ MongoDB Error:', err));
 
 // ============================================
-// IMPORT ROUTES
+// IMPORT ROUTES - FIXED
 // ============================================
 const routes = require('./routes');
-const authRoutes = require('./routes/auth');
 
 // ============================================
 // ROUTES
 // ============================================
 app.use('/api', routes);
-app.use('/api/auth', authRoutes);
 
 // ============================================
 // HEALTH CHECK
@@ -88,7 +86,13 @@ app.get('/', (req, res) => {
     res.status(200).json({
         name: 'APK Platform API',
         version: '1.0.0',
-        status: 'online'
+        status: 'online',
+        endpoints: {
+            health: '/health',
+            api: '/api',
+            apps: '/api/apps',
+            auth: '/api/auth'
+        }
     });
 });
 
