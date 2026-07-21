@@ -6,101 +6,107 @@ const helmet = require('helmet');
 const compression = require('compression');
 const path = require('path');
 const fs = require('fs-extra');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ===== CREATE DIRECTORIES =====
-['uploads', 'uploads/apks', 'uploads/icons', 'generated-apps'].forEach(dir => {
+// ============================================
+// CREATE DIRECTORIES
+// ============================================
+const dirs = ['uploads', 'uploads/apks', 'uploads/icons', 'uploads/screenshots', 'generated-apps'];
+dirs.forEach(dir => {
     fs.ensureDirSync(path.join(__dirname, dir));
 });
 
-// ===== CORS (FIXED FOR VERCEl) =====
+// ============================================
+// RATE LIMITING
+// ============================================
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: 'Too many requests, please try again later.'
+});
+
+// ============================================
+// CORS
+// ============================================
 app.use(cors({
-    origin: [
-        'https://alpha-app-store.vercel.app',
-        'http://localhost:3000',
-        'http://localhost:5000',
-        'http://127.0.0.1:5500',
-        'https://alpha-app-store-git-main-mamme234.vercel.app' // Add this if your Vercel URL has this format
-    ],
+    origin: process.env.FRONTEND_URL || 'https://apk-platform.vercel.app',
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
-// ===== MIDDLEWARE =====
+// ============================================
+// MIDDLEWARE
+// ============================================
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(compression());
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
-
-// ===== STATIC FILES =====
-app.use('/generated', express.static(path.join(__dirname, 'generated-apps')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/generated', express.static(path.join(__dirname, 'generated-apps')));
 
-// ===== DATABASE =====
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/alpha-store')
+// ============================================
+// DATABASE CONNECTION
+// ============================================
+mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('✅ MongoDB Connected'))
     .catch(err => console.error('❌ MongoDB Error:', err));
 
-// ===== ROUTES =====
+// ============================================
+// IMPORT ROUTES
+// ============================================
 const routes = require('./routes');
+const authRoutes = require('./routes/auth');
+
+// ============================================
+// ROUTES
+// ============================================
 app.use('/api', routes);
+app.use('/api/auth', authRoutes);
 
-// ===== ROOT ROUTE =====
-app.get('/', (req, res) => {
-    res.status(200).json({
-        name: 'Alpha App Store API',
-        version: '1.0.0',
-        status: 'online',
-        endpoints: {
-            health: '/health',
-            api: '/api',
-            apps: '/api/apps',
-            auth: '/api/auth'
-        }
-    });
-});
-
-// ===== HEALTH CHECK =====
+// ============================================
+// HEALTH CHECK
+// ============================================
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'OK',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-        environment: process.env.NODE_ENV || 'development'
+        mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
     });
 });
 
-// ===== 404 HANDLER =====
+// ============================================
+// ROOT
+// ============================================
+app.get('/', (req, res) => {
+    res.status(200).json({
+        name: 'APK Platform API',
+        version: '1.0.0',
+        status: 'online'
+    });
+});
+
+// ============================================
+// 404 HANDLER
+// ============================================
 app.use((req, res) => {
     res.status(404).json({
         success: false,
-        message: `Route not found: ${req.method} ${req.originalUrl}`,
-        availableRoutes: [
-            'GET /',
-            'GET /health',
-            'POST /api/auth/register',
-            'POST /api/auth/login',
-            'GET /api/auth/me',
-            'GET /api/apps',
-            'GET /api/apps/featured',
-            'GET /api/apps/trending',
-            'GET /api/apps/:id',
-            'POST /api/apps/submit',
-            'GET /api/apps/download/:id',
-            'POST /api/apps/:id/favorite'
-        ]
+        message: 'Route not found'
     });
 });
 
-// ===== START SERVER =====
+// ============================================
+// START SERVER
+// ============================================
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📁 Uploads: ${path.join(__dirname, 'uploads')}`);
     console.log(`📁 Generated APKs: ${path.join(__dirname, 'generated-apps')}`);
-    console.log(`🌐 Health check: http://localhost:${PORT}/health`);
 });
