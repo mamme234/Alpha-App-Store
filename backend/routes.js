@@ -151,7 +151,7 @@ router.post('/auth/register', async (req, res) => {
     }
 });
 
-// LOGIN - /auth/login
+// LOGIN - /auth/login (Email + Password only)
 router.post('/auth/login', async (req, res) => {
     try {
         console.log('🔐 Login request received:', req.body.email);
@@ -165,7 +165,7 @@ router.post('/auth/login', async (req, res) => {
             });
         }
 
-        // Find user with password
+        // Find user by email only
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
             return res.status(401).json({ 
@@ -190,7 +190,7 @@ router.post('/auth/login', async (req, res) => {
         // Generate token
         const token = generateToken(user._id);
 
-        console.log('✅ Login successful:', user.username);
+        console.log('✅ Login successful:', user.email);
 
         res.status(200).json({
             success: true,
