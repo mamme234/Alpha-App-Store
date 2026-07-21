@@ -1,100 +1,87 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#4f46e5">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="description" content="Alpha APK Store - Download and discover amazing Android apps">
-    <title>Alpha APK Store</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APK Store - Premium Android Apps</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-
-    <!-- ============================================
-    NAVBAR
-    ============================================ -->
-    <nav class="navbar" id="navbar">
-        <div class="container">
-            <div class="nav-brand" onclick="navigateTo('home')">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand" onclick="navigate('home')">
                 <i class="fas fa-cube"></i>
-                <span>AlphaStore</span>
+                <span>APK Store</span>
             </div>
             
             <div class="nav-search">
                 <input type="text" id="searchInput" placeholder="Search apps, games, tools...">
-                <button id="searchBtn"><i class="fas fa-search"></i></button>
+                <button onclick="searchApps()"><i class="fas fa-search"></i></button>
             </div>
             
             <div class="nav-links">
-                <a href="#" class="nav-home" onclick="navigateTo('home')"><i class="fas fa-home"></i> Home</a>
-                <a href="#" class="nav-categories" onclick="navigateTo('categories')"><i class="fas fa-th-large"></i> Categories</a>
-                <a href="#" id="navSubmit" style="display:none;" onclick="navigateTo('submit')"><i class="fas fa-upload"></i> Submit</a>
-                <a href="#" id="navFavorites" style="display:none;" onclick="navigateTo('favorites')"><i class="fas fa-heart"></i> Favorites</a>
-                <a href="#" id="navAuth" class="btn-primary" onclick="handleAuthClick()"><i class="fas fa-user"></i> Login</a>
+                <a href="#" onclick="navigate('home')" class="active"><i class="fas fa-home"></i> Home</a>
+                <a href="#" onclick="navigate('categories')"><i class="fas fa-th-large"></i> Categories</a>
+                <a href="#" id="navDeveloper" style="display:none;" onclick="navigate('developer')"><i class="fas fa-code"></i> Developer</a>
+                <a href="#" id="navAdmin" style="display:none;" onclick="navigate('admin')"><i class="fas fa-shield-alt"></i> Admin</a>
+                <a href="#" id="navFavorites" style="display:none;" onclick="navigate('favorites')"><i class="fas fa-heart"></i> Favorites</a>
+                <button class="theme-toggle" onclick="toggleTheme()"><i class="fas fa-moon"></i></button>
+                <a href="#" id="navAuth" class="btn-primary" onclick="handleAuth()"><i class="fas fa-user"></i> Login</a>
             </div>
         </div>
     </nav>
 
-    <!-- ============================================
-    MAIN CONTENT
-    ============================================ -->
+    <!-- Main Content -->
     <main id="mainContent">
-        <!-- All content rendered by JavaScript -->
+        <!-- Content rendered by JavaScript -->
     </main>
 
-    <!-- ============================================
-    FOOTER
-    ============================================ -->
+    <!-- Footer -->
     <footer class="footer">
-        <div class="container">
+        <div class="footer-container">
             <div class="footer-grid">
-                <div class="footer-brand">
-                    <h3><i class="fas fa-cube"></i> AlphaStore</h3>
-                    <p>Discover, download, and share amazing Android apps. Secure and trusted platform for millions of users.</p>
-                    <div class="footer-social">
+                <div>
+                    <h3><i class="fas fa-cube"></i> APK Store</h3>
+                    <p>Discover, download, and share amazing Android apps. Secure and trusted platform.</p>
+                    <div class="social-links">
                         <a href="#"><i class="fab fa-twitter"></i></a>
                         <a href="#"><i class="fab fa-github"></i></a>
-                        <a href="#"><i class="fab fa-youtube"></i></a>
                         <a href="#"><i class="fab fa-discord"></i></a>
                         <a href="#"><i class="fab fa-telegram"></i></a>
                     </div>
                 </div>
-                <div class="footer-links">
+                <div>
                     <h4>Platform</h4>
-                    <a href="#" onclick="navigateTo('home')">Browse Apps</a>
-                    <a href="#" onclick="navigateTo('categories')">Categories</a>
-                    <a href="#" onclick="showNotification('Top Downloads', 'info')">Top Downloads</a>
-                    <a href="#" onclick="showNotification('New Releases', 'info')">New Releases</a>
+                    <a href="#" onclick="navigate('home')">Browse Apps</a>
+                    <a href="#" onclick="navigate('categories')">Categories</a>
+                    <a href="#">Top Downloads</a>
+                    <a href="#">New Releases</a>
                 </div>
-                <div class="footer-links">
+                <div>
                     <h4>Developers</h4>
-                    <a href="#" onclick="navigateTo('submit')">Submit App</a>
-                    <a href="#" onclick="showNotification('Developer Dashboard', 'info')">Dashboard</a>
-                    <a href="#" onclick="showNotification('Documentation', 'info')">Documentation</a>
-                    <a href="#" onclick="showNotification('API', 'info')">API</a>
+                    <a href="#" onclick="navigate('developer')">Developer Dashboard</a>
+                    <a href="#" onclick="navigate('submit')">Submit App</a>
+                    <a href="#">Documentation</a>
+                    <a href="#">API</a>
                 </div>
-                <div class="footer-links">
+                <div>
                     <h4>Company</h4>
-                    <a href="#" onclick="showNotification('About Us', 'info')">About Us</a>
-                    <a href="#" onclick="showNotification('Privacy Policy', 'info')">Privacy Policy</a>
-                    <a href="#" onclick="showNotification('Terms of Service', 'info')">Terms</a>
-                    <a href="#" onclick="showNotification('Contact', 'info')">Contact</a>
+                    <a href="#">About Us</a>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Contact</a>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 Alpha APK Store. All rights reserved.</p>
-                <p>Made with <i class="fas fa-heart" style="color:#ef4444;"></i> for developers worldwide</p>
+                <p>&copy; 2024 APK Store. All rights reserved.</p>
+                <p>Made with <i class="fas fa-heart" style="color:#ef4444;"></i> for the community</p>
             </div>
         </div>
     </footer>
 
-    <!-- ============================================
-    JAVASCRIPT
-    ============================================ -->
     <script src="app.js"></script>
 </body>
     </html>
