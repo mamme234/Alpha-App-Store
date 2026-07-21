@@ -20,23 +20,35 @@ dirs.forEach(dir => {
 });
 
 // ============================================
-// RATE LIMITING
+// CORS - FIXED
 // ============================================
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: 'Too many requests, please try again later.'
-});
+const allowedOrigins = [
+    'https://alpha-app-store.vercel.app',
+    'https://apk-store.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'http://127.0.0.1:5500',
+    'https://alpha-app-store-git-main-mamme234.vercel.app'
+];
 
-// ============================================
-// CORS
-// ============================================
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'https://apk-store.vercel.app',
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log('Blocked origin:', origin);
+            callback(null, true); // Allow all in development
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
 }));
+
+// Enable pre-flight requests
+app.options('*', cors());
 
 // ============================================
 // MIDDLEWARE
@@ -53,12 +65,12 @@ app.use('/generated', express.static(path.join(__dirname, 'generated-apps')));
 // ============================================
 // DATABASE CONNECTION
 // ============================================
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/apk-platform')
     .then(() => console.log('✅ MongoDB Connected'))
     .catch(err => console.error('❌ MongoDB Error:', err));
 
 // ============================================
-// IMPORT ROUTES - FIXED
+// IMPORT ROUTES
 // ============================================
 const routes = require('./routes');
 
@@ -91,7 +103,8 @@ app.get('/', (req, res) => {
             health: '/health',
             api: '/api',
             apps: '/api/apps',
-            auth: '/api/auth'
+            auth: '/api/auth/register',
+            auth_login: '/api/auth/login'
         }
     });
 });
@@ -102,7 +115,18 @@ app.get('/', (req, res) => {
 app.use((req, res) => {
     res.status(404).json({
         success: false,
-        message: 'Route not found'
+        message: `Route not found: ${req.method} ${req.originalUrl}`
+    });
+});
+
+// ============================================
+// ERROR HANDLER
+// ============================================
+app.use((err, req, res, next) => {
+    console.error('Server Error:', err);
+    res.status(500).json({
+        success: false,
+        message: err.message || 'Internal server error'
     });
 });
 
@@ -113,4 +137,5 @@ app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📁 Uploads: ${path.join(__dirname, 'uploads')}`);
     console.log(`📁 Generated APKs: ${path.join(__dirname, 'generated-apps')}`);
+    console.log(`🌐 Health check: http://localhost:${PORT}/health`);
 });
