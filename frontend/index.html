@@ -2,14 +2,20 @@
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6C3CE1">
+    <meta name="description" content="APK Store - Discover and download amazing Android apps">
     <title>APK Store - Premium Android Apps</title>
+    
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Navigation -->
+
+    <!-- ============================================
+    NAVBAR
+    ============================================ -->
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-brand" onclick="navigate('home')">
@@ -34,18 +40,22 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
+    <!-- ============================================
+    MAIN CONTENT
+    ============================================ -->
     <main id="mainContent">
         <!-- Content rendered by JavaScript -->
     </main>
 
-    <!-- Footer -->
+    <!-- ============================================
+    FOOTER
+    ============================================ -->
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-grid">
                 <div>
                     <h3><i class="fas fa-cube"></i> APK Store</h3>
-                    <p>Discover, download, and share amazing Android apps. Secure and trusted platform.</p>
+                    <p>Discover, download, and share amazing Android apps. Secure and trusted platform for millions of users.</p>
                     <div class="social-links">
                         <a href="#"><i class="fab fa-twitter"></i></a>
                         <a href="#"><i class="fab fa-github"></i></a>
@@ -57,22 +67,22 @@
                     <h4>Platform</h4>
                     <a href="#" onclick="navigate('home')">Browse Apps</a>
                     <a href="#" onclick="navigate('categories')">Categories</a>
-                    <a href="#">Top Downloads</a>
-                    <a href="#">New Releases</a>
+                    <a href="#" onclick="showNotification('Top Downloads', 'info')">Top Downloads</a>
+                    <a href="#" onclick="showNotification('New Releases', 'info')">New Releases</a>
                 </div>
                 <div>
                     <h4>Developers</h4>
                     <a href="#" onclick="navigate('developer')">Developer Dashboard</a>
                     <a href="#" onclick="navigate('submit')">Submit App</a>
-                    <a href="#">Documentation</a>
-                    <a href="#">API</a>
+                    <a href="#" onclick="showNotification('Documentation', 'info')">Documentation</a>
+                    <a href="#" onclick="showNotification('API', 'info')">API</a>
                 </div>
                 <div>
                     <h4>Company</h4>
-                    <a href="#">About Us</a>
-                    <a href="#">Privacy Policy</a>
-                    <a href="#">Terms of Service</a>
-                    <a href="#">Contact</a>
+                    <a href="#" onclick="showNotification('About Us', 'info')">About Us</a>
+                    <a href="#" onclick="showNotification('Privacy Policy', 'info')">Privacy Policy</a>
+                    <a href="#" onclick="showNotification('Terms of Service', 'info')">Terms</a>
+                    <a href="#" onclick="showNotification('Contact', 'info')">Contact</a>
                 </div>
             </div>
             <div class="footer-bottom">
@@ -82,6 +92,9 @@
         </div>
     </footer>
 
+    <!-- ============================================
+    JAVASCRIPT
+    ============================================ -->
     <script src="app.js"></script>
 </body>
-    </html>
+                            </html>
