@@ -139,7 +139,7 @@ const api = {
 };
 
 // ============================================
-// AUTH SYSTEM
+// AUTH SYSTEM - FIXED
 // ============================================
 const Auth = {
     getUser: () => currentUser,
@@ -149,6 +149,7 @@ const Auth = {
     login: async (email, password) => {
         try {
             console.log('🔐 Attempting login...');
+            // CORRECT ENDPOINT: /auth/login
             const result = await api.post('/auth/login', { email, password });
             if (result.success) {
                 currentUser = result.data.user;
@@ -172,7 +173,13 @@ const Auth = {
     register: async (username, email, password, role = 'user') => {
         try {
             console.log('📝 Attempting registration...');
-            const result = await api.post('/auth/register', { username, email, password, role });
+            // CORRECT ENDPOINT: /auth/register
+            const result = await api.post('/auth/register', { 
+                username, 
+                email, 
+                password, 
+                role 
+            });
             if (result.success) {
                 currentUser = result.data.user;
                 authToken = result.data.token;
@@ -770,7 +777,7 @@ async function renderCategories(container) {
 }
 
 // ============================================
-// RENDER LOGIN
+// RENDER LOGIN - FIXED
 // ============================================
 function renderLogin(container) {
     if (Auth.isLoggedIn()) {
@@ -801,7 +808,7 @@ function renderLogin(container) {
 }
 
 // ============================================
-// RENDER REGISTER
+// RENDER REGISTER - FIXED
 // ============================================
 function renderRegister(container) {
     if (Auth.isLoggedIn()) {
@@ -815,15 +822,15 @@ function renderRegister(container) {
             <p style="text-align:center;color:var(--text-muted);margin-bottom:20px;">Join the community and discover amazing apps</p>
             <form id="registerForm" onsubmit="handleRegister(event)">
                 <div class="form-group">
-                    <label><i class="fas fa-user"></i> Username</label>
+                    <label><i class="fas fa-user"></i> Username *</label>
                     <input type="text" id="regUsername" required placeholder="username" minlength="3">
                 </div>
                 <div class="form-group">
-                    <label><i class="fas fa-envelope"></i> Email</label>
+                    <label><i class="fas fa-envelope"></i> Email *</label>
                     <input type="email" id="regEmail" required placeholder="your@email.com">
                 </div>
                 <div class="form-group">
-                    <label><i class="fas fa-lock"></i> Password</label>
+                    <label><i class="fas fa-lock"></i> Password *</label>
                     <input type="password" id="regPassword" required placeholder="••••••••" minlength="6">
                     <small style="color:var(--text-muted);font-size:12px;">Must be at least 6 characters</small>
                 </div>
@@ -1256,42 +1263,72 @@ function renderProfile(container) {
 }
 
 // ============================================
-// HANDLERS
+// HANDLERS - FIXED
 // ============================================
+
+// LOGIN HANDLER - Calls /auth/login
 async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
+
+    if (!email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+    }
+
+    console.log('📧 Login attempt for:', email);
 
     const btn = e.target.querySelector('.btn-submit');
     const original = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
     btn.disabled = true;
 
-    await Auth.login(email, password);
+    const result = await Auth.login(email, password);
 
     btn.innerHTML = original;
     btn.disabled = false;
 }
 
+// REGISTER HANDLER - Calls /auth/register
 async function handleRegister(e) {
     e.preventDefault();
     const username = document.getElementById('regUsername').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const password = document.getElementById('regPassword').value;
-    const role = document.getElementById('regRole').value;
+    const role = document.getElementById('regRole')?.value || 'user';
+
+    if (!username || !email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+    }
+
+    if (username.length < 3) {
+        showNotification('Username must be at least 3 characters', 'error');
+        return;
+    }
+
+    if (password.length < 6) {
+        showNotification('Password must be at least 6 characters', 'error');
+        return;
+    }
+
+    console.log('📝 Registration attempt for:', username);
 
     const btn = e.target.querySelector('.btn-submit');
     const original = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
     btn.disabled = true;
 
-    await Auth.register(username, email, password, role);
+    const result = await Auth.register(username, email, password, role);
 
     btn.innerHTML = original;
     btn.disabled = false;
 }
 
+// ============================================
+// SUBMIT APP HANDLER
+// ============================================
 async function handleSubmitApp(e) {
     e.preventDefault();
 
